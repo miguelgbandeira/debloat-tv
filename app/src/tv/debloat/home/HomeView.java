@@ -854,6 +854,23 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         hidePoster();
     }
 
+    /** Scrolls the card's row so the card (which grows a little) is fully on screen, with the left side's margin. */
+    void revealCard(View card) {
+        View row = rowOf(card);
+        if (row == null) return;
+        LinearLayout cards = cards(row);
+        HorizontalScrollView h = (HorizontalScrollView) cards.getParent();
+        if (firstCard(cards) == card) {
+            h.smoothScrollTo(toolsWidth(), 0);
+            return;
+        }
+        h.post(() -> {
+            int room = px(SIDE), x = h.getScrollX();
+            if (card.getRight() - x > h.getWidth() - room) h.smoothScrollTo(card.getRight() - h.getWidth() + room, 0);
+            else if (card.getLeft() - x < room) h.smoothScrollTo(Math.max(toolsWidth(), card.getLeft() - room), 0);
+        });
+    }
+
     void onCardFocused(View card) {
         if (movingRow != null) return;   // the row being moved is re-placed: nothing else should react
         if (!card.isLaidOut() || card.isLayoutRequested()) {   // just rebuilt: wait for the rows' places
@@ -861,20 +878,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
             return;
         }
         View row = rowOf(card);
-        if (row != null) {
-            LinearLayout cards = cards(row);
-            HorizontalScrollView h = (HorizontalScrollView) cards.getParent();
-            if (firstCard(cards) == card) {
-                h.smoothScrollTo(toolsWidth(), 0);
-            } else {
-                // Keep the selected card (which grows a little) fully on screen, with the same margin as the left side.
-                h.post(() -> {
-                    int room = px(SIDE), x = h.getScrollX();
-                    if (card.getRight() - x > h.getWidth() - room) h.smoothScrollTo(card.getRight() - h.getWidth() + room, 0);
-                    else if (card.getLeft() - x < room) h.smoothScrollTo(Math.max(toolsWidth(), card.getLeft() - room), 0);
-                });
-            }
-        }
+        revealCard(card);
         onRowFocused(row);
         Object t = card.getTag(TAG_TITLE);
         main.removeCallbacks(showHero);
@@ -1229,6 +1233,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
                     cards.removeView(other);
                     cards.addView(other, i);
                 }, false, card, other);
+                card.post(() -> revealCard(card));   // the card keeps the selection, so the row follows it here
                 return true;
             }
             case KeyEvent.KEYCODE_DPAD_CENTER:
