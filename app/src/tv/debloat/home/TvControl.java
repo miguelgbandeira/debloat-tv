@@ -18,6 +18,20 @@ final class TvControl {
     private TvControl() {}
 
     static final String GOOGLE_HOME = "com.google.android.apps.tv.launcherx", GOOGLE_SETUP = "com.google.android.tungsten.setupwraith";
+    /** The TV's own home screens (Google TV's, then older Android TV ones): the same list the installer uses. */
+    static final String[] OWN_HOMES = {GOOGLE_HOME, "com.google.android.tvlauncher", "com.google.android.leanbacklauncher"};
+
+    /** The TV's own home screen on this TV (installed, whether on or off), or null. */
+    static String ownHome(Context c) {
+        for (String p : OWN_HOMES) {
+            try {
+                c.getPackageManager().getApplicationInfo(p, android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS);
+                return p;
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
+    }
     private static final String SERVICE = "tv.debloat.home/tv.debloat.home.KeyService";
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static volatile boolean busy;
@@ -74,10 +88,12 @@ final class TvControl {
 
     /** Is the TV's own home screen turned off (so Home opens Debloat TV)? */
     static boolean debloatIsHome(Context c) {
+        String own = ownHome(c);
+        if (own == null) return true;   // nothing else to be home
         try {
-            return !c.getPackageManager().getApplicationInfo(GOOGLE_HOME, 0).enabled;
+            return !c.getPackageManager().getApplicationInfo(own, android.content.pm.PackageManager.MATCH_DISABLED_COMPONENTS).enabled;
         } catch (Exception e) {
-            return true;   // no Google TV home on this TV
+            return true;
         }
     }
 
@@ -86,18 +102,24 @@ final class TvControl {
         new Thread(() -> {
             String error = null;
             try (Adb adb = Adb.connect(c, 20000)) {
+                String own = ownHome(c);
+                if (own == null) throw new java.io.IOException("This TV has no other home screen to switch to.");
+                boolean googleTv = own.equals(GOOGLE_HOME);
                 if (debloat) {
-                    if (adb.run("dumpsys wifi").contains("cname=" + GOOGLE_SETUP)) {
+                    if (googleTv && adb.run("dumpsys wifi").contains("cname=" + GOOGLE_SETUP)) {
                         throw new java.io.IOException("The TV's first setup saved a Wi-Fi network: forget it and connect again in Settings → Network, then try once more.");
                     }
                     adb.run("cmd role add-role-holder --user 0 android.app.role.HOME tv.debloat.home");
-                    adb.run("pm disable-user --user 0 " + GOOGLE_HOME);
-                    adb.run("pm disable-user --user 0 " + GOOGLE_SETUP);
+                    adb.run("pm disable-user --user 0 " + own);
+                    if (googleTv) adb.run("pm disable-user --user 0 " + GOOGLE_SETUP);
                 } else {
-                    adb.run("pm enable " + GOOGLE_SETUP);
-                    adb.run("pm enable " + GOOGLE_HOME);
-                    adb.run("cmd role add-role-holder --user 0 android.app.role.HOME " + GOOGLE_HOME);
+                    if (googleTv) adb.run("pm enable " + GOOGLE_SETUP);
+                    adb.run("pm enable " + own);
+                    adb.run("cmd role add-role-holder --user 0 android.app.role.HOME " + own);
                 }
+                // Check it took: the TV's own home screen is off for Debloat TV, on for the TV's.
+                boolean ok = adb.run("pm list packages -d " + own).contains("package:" + own) == debloat;
+                if (!ok) throw new java.io.IOException("The TV didn't make the change. Try again, or use ./install.sh on a computer.");
             } catch (Exception e) {
                 error = String.valueOf(e.getMessage() != null ? e.getMessage() : e);
             }

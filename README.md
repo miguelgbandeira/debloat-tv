@@ -1,5 +1,7 @@
 # Debloat TV
 
+[![checks](https://github.com/miguelgbandeira/debloat-tv/actions/workflows/checks.yml/badge.svg)](https://github.com/miguelgbandeira/debloat-tv/actions/workflows/checks.yml)
+
 **A calm, ad-free home screen for Android TV and Google TV.** Your apps in rows you arrange, what you're watching,
 and nothing you didn't ask for.
 
@@ -65,14 +67,14 @@ own home screen.
 - **Stremio and Trakt** sign in on the TV with a code you approve on your phone. Trakt also needs your own free Trakt
   app ([trakt.tv/oauth/applications](https://trakt.tv/oauth/applications), redirect URI `http://localhost`).
 - **Popular / New on your apps** need a free [TMDB](https://www.themoviedb.org/settings/api) key.
-- **Tested on** a TCL Google TV (Android 14). It should work on other Android TV / Google TV sets; tell us how it goes.
+- **Early version.** Tested on a TCL Google TV (Android 14). It should work on other Android TV / Google TV sets; tell us how it goes.
 
 ## Changing it
 
 It's plain Java with no libraries. `./build.sh` builds `DebloatTV.apk` (JDK 17 + Android SDK: `platforms;android-34`,
 `build-tools;34.0.0`); `adb install -r DebloatTV.apk` updates the TV. Icons are regenerated with
 `tools/icons.py` (Material Symbols Rounded font) and the app icon/banner with `tools/artwork.py`. Logs:
-`adb logcat -s DebloatTV`. Issues and pull requests welcome.
+`adb logcat -s DebloatTV`. Issues and pull requests welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## How it works
 

@@ -41,19 +41,35 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
 done
 [ "$(adb -s "$TV" get-state 2>/dev/null)" = device ] || { echo "Can't reach the TV at $TV." >&2; exit 1; }
 
-installed() { tv pm list packages "$1" | grep -qx "package:$1"; }
+# Output is captured first, then searched: piping into "grep -q" can end the pipe early, and with pipefail that
+# counts as a failure even when the text was found.
+installed() { local out; out=$(tv pm list packages "$1"); grep -qx "package:$1" <<<"$out"; }
+home_now() { tv cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1; }
+# Quotes a value for the TV's shell: adb joins the arguments and the TV splits them again.
+quote() { local v=${1//\'/\'\\\'\'}; printf "'%s'" "$v"; }
 
 if [ "$MODE" = undo ]; then
   say "Giving Home back to the TV's own home screen…"
-  for p in $GOOGLE_SETUP $GOOGLE_HOME $OLD_HOMES; do installed "$p" && tv pm enable "$p" >/dev/null || true; done
-  for p in $GOOGLE_HOME $OLD_HOMES; do
-    if installed "$p"; then tv cmd role add-role-holder --user 0 android.app.role.HOME "$p" >/dev/null 2>&1 || true; break; fi
+  own=
+  for p in $GOOGLE_SETUP $GOOGLE_HOME $OLD_HOMES; do
+    if installed "$p"; then
+      tv pm enable "$p" >/dev/null || { echo "Couldn't turn $p back on." >&2; exit 1; }
+      [ "$p" = "$GOOGLE_SETUP" ] || [ -n "$own" ] || own=$p
+    fi
   done
+  if [ -n "$own" ]; then
+    tv cmd role add-role-holder --user 0 android.app.role.HOME "$own" >/dev/null 2>&1 || true   # not on every Android
+  fi
   # Our remote-button service off (other accessibility services stay).
   list=$(tv settings get secure enabled_accessibility_services)
   rest=$(printf '%s' "$list" | tr ':' '\n' | grep -v "^$PKG/" | grep -v '^null$' | paste -sd: - || true)
   if [ -n "$rest" ]; then tv settings put secure enabled_accessibility_services "$rest"; else tv settings delete secure enabled_accessibility_services >/dev/null; fi
-  say "Done. Debloat TV is still installed: remove it with  adb -s $TV uninstall $PKG"
+  now=$(home_now)
+  if [ "${now%%/*}" = "$PKG" ]; then
+    echo "Home still opens Debloat TV ($now). Remove it to fall back:  adb -s $TV uninstall $PKG" >&2
+    exit 1
+  fi
+  say "Done: Home opens ${now:-the original home screen}. Debloat TV is still installed: remove it with  adb -s $TV uninstall $PKG"
   exit 0
 fi
 
@@ -74,37 +90,41 @@ tv settings put secure accessibility_enabled 1
 
 if [ -n "$CONFIG" ]; then
   say "Settings from ${CONFIG}…"
-  args=()
-  while IFS='=' read -r k v; do
+  [ -f "$CONFIG" ] || { echo "No such file: $CONFIG" >&2; exit 1; }
+  cmd="am broadcast -a $PKG.SETUP -n $PKG/.SetupReceiver"
+  while IFS='=' read -r k v || [ -n "$k" ]; do
     case "$k" in ''|\#*) continue ;; esac
-    args+=(--es "$k" "$v")
+    [[ "$k" =~ ^[a-z_]+$ ]] || { echo "Bad setting name in $CONFIG: $k" >&2; exit 1; }
+    cmd+=" --es $k $(quote "$v")"   # quoted for the TV's shell, so "New York" stays one value and "" stays empty
   done < "$CONFIG"
-  adb -s "$TV" shell am broadcast -a $PKG.SETUP -n $PKG/.SetupReceiver "${args[@]}" | tail -1
+  result=$(adb -s "$TV" shell "$cmd" | tail -1)
+  case "$result" in *'data="ok:'*) echo "$result" ;; *) echo "The TV didn't take the settings: $result" >&2; exit 1 ;; esac
 fi
 
 say "Making it the home screen…"
 tv cmd role add-role-holder --user 0 android.app.role.HOME $PKG >/dev/null 2>&1 || true
 tv cmd package set-home-activity $PKG/.HomeActivity >/dev/null 2>&1 || true
-current=$(tv cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1)
+current=$(home_now)
 if [ "${current%%/*}" != "$PKG" ]; then
   # The TV's own home screen still wins: turn it off (it stays installed; --undo turns it back on).
   if installed $GOOGLE_HOME; then
     # Turning off an app deletes the Wi-Fi networks it saved. The TV's first setup often saved the home Wi-Fi.
-    if tv dumpsys wifi | grep -q "cname=$GOOGLE_SETUP"; then
+    wifi=$(tv dumpsys wifi)
+    if grep -q "cname=$GOOGLE_SETUP" <<<"$wifi"; then
       echo "The TV's first setup saved a Wi-Fi network; turning it off would erase it." >&2
       echo "On the TV: Settings → Network & Internet → forget that network and connect again. Then run this again." >&2
       exit 1
     fi
     tv pm disable-user --user 0 $GOOGLE_HOME >/dev/null
-    current=$(tv cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1)
+    current=$(home_now)
     # On Google TV the setup app answers Home next.
     if [ "${current%%/*}" = "$GOOGLE_SETUP" ]; then tv pm disable-user --user 0 $GOOGLE_SETUP >/dev/null; fi
   fi
   for p in $OLD_HOMES; do installed "$p" && tv pm disable-user --user 0 "$p" >/dev/null || true; done
 fi
 tv input keyevent KEYCODE_HOME
-current=$(tv cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1)
-if [ "${current%%/*}" = "$PKG" ]; then say "Done: Home opens Debloat TV."; else say "Installed, but Home still opens $current."; fi
+current=$(home_now)
+if [ "${current%%/*}" = "$PKG" ]; then say "Done: Home opens Debloat TV."; else echo "Installed, but Home still opens $current." >&2; exit 1; fi
 echo
 echo "Keep USB debugging on: Debloat TV uses it to turn remote buttons back on after a restart (TCL and others),"
 echo "and for the Home switch in its settings. The TV asks \"Allow USB debugging?\" once for Debloat TV: allow it."

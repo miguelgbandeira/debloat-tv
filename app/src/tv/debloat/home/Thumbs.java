@@ -92,7 +92,9 @@ final class Thumbs {
     }
 
     private void download(String url, File f) throws IOException {
-        File part = new File(dir, f.getName() + ".download");
+        // A file of its own per download: two cards asking for the same picture at once don't write over each other
+        // (the rename below is atomic; the second one just replaces the first with the same bytes).
+        File part = File.createTempFile(f.getName(), ".download", dir);
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(8000);
         c.setReadTimeout(20000);
@@ -113,6 +115,12 @@ final class Thumbs {
 
     /** Keeps the newest 150 images on disk (a few rows' worth, twice over). */
     private void prune() {
+        long stale = System.currentTimeMillis() - 10 * 60_000L;   // downloads cut off when the app was stopped
+        File[] parts = dir.listFiles((d, name) -> name.endsWith(".download"));
+        for (int i = 0; parts != null && i < parts.length; i++) {
+            //noinspection ResultOfMethodCallIgnored
+            if (parts[i].lastModified() < stale) parts[i].delete();
+        }
         File[] files = dir.listFiles((d, name) -> name.endsWith(".img"));
         if (files == null || files.length <= 150) return;
         Arrays.sort(files, (a, b) -> Long.compare(a.lastModified(), b.lastModified()));
