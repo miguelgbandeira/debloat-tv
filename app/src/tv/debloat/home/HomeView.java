@@ -1712,16 +1712,40 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         b.item("Weather", city.isEmpty() ? "Off" : city, true, () -> sheet.push(this::cityPage));
         b.item("Live TV app", liveTvName(), true, () -> sheet.push(this::liveTvPage));
         b.item("Remote buttons", null, true, () -> sheet.push(this::remoteButtonsPage));
-        b.item("Home button opens", "This home screen", true, () -> sheet.push(this::homeScreenPage));
+        b.item("Home button opens", TvControl.debloatIsHome(activity) ? "Debloat TV" : "TV's own", true, () -> sheet.push(this::homeScreenPage));
     }
 
-    /** Switching back to the TV's own home screen is done by the installer (it changes system apps). */
+    /** The Home button: this home screen, or the TV's own (through the TV's own adb; needs USB debugging). */
     private void homeScreenPage(Sheet.Builder b) {
+        boolean ours = TvControl.debloatIsHome(activity);
         b.icon(symbol("home"), true).title("Home screen").subtitle("Which home screen the Home button opens.");
-        b.heading("Home screen");
-        b.note("Debloat TV is your home screen. To go back to the TV's original one, run the installer's undo on your computer:");
-        b.note("./install.sh --undo <TV-IP>");
-        b.hint("That turns the TV's home screen back on and leaves everything else as it was.");
+        b.heading("Home button opens");
+        b.row("home:debloat", "Debloat TV", ours ? "\u2713" : null, false, () -> switchHome(true), null, null);
+        b.row("home:original", "The TV's own home screen", ours ? null : "\u2713", false, () -> switchHome(false), null, null);
+        if (!TvControl.adbOn) b.note("Needs USB debugging on (Settings \u2192 System \u2192 Developer options). Or on a computer: ./install.sh <TV-IP> --undo");
+        else b.hint("The first time, the TV asks \u201cAllow USB debugging?\u201d: tick Always allow and press OK.");
+    }
+
+    private void switchHome(boolean debloat) {
+        if (debloat == TvControl.debloatIsHome(activity)) return;
+        sheet.replaceTop(p -> {
+            p.icon(symbol("home"), true).title("Home screen").subtitle("Switching\u2026");
+            p.note("If the TV asks \u201cAllow USB debugging?\u201d, tick Always allow and press OK.");
+        });
+        TvControl.setHome(activity, debloat, error -> {
+            if (error == null) {
+                sheet.close();
+                if (!debloat) {   // straight to the TV's own home screen
+                    activity.startActivity(new android.content.Intent(android.content.Intent.ACTION_MAIN)
+                            .addCategory(android.content.Intent.CATEGORY_HOME).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK));
+                }
+                return;
+            }
+            sheet.replaceTop(p -> {
+                p.icon(symbol("home"), true).title("Home screen").subtitle("Couldn't switch");
+                p.note(error);
+            });
+        });
     }
 
     // MARK: - Streaming apps (TMDB), weather, Live TV

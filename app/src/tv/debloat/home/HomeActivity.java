@@ -23,6 +23,7 @@ public final class HomeActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         home.resume();
+        TvControl.repairAfterBoot(this);   // remote buttons back on after a restart (needs USB debugging)
     }
 
     @Override protected void onPause() {
