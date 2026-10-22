@@ -308,7 +308,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
 
     private void setupWherePage(Sheet.Builder b) {
         b.icon(symbol("tv"), true).title("Welcome to Debloat TV").subtitle("A few questions, then your home screen is ready.");
-        b.heading("What do you watch with?");
+        b.heading("Where do you watch movies and shows?");
         if (Apps.installed(activity, Stremio.PKG)) {
             b.row("where:stremio", "Stremio", useStremio() ? "\u2713" : null, !useStremio(), () -> {
                 Store.put(activity, "use_stremio", useStremio() ? "0" : "1");
