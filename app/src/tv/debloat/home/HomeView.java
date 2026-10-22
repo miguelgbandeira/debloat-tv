@@ -1574,20 +1574,23 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         if (!tile) appSystemItems(b, pkg);
     }
 
-    /** The app's own Android pages: App info (storage, permissions, force stop) and Uninstall. */
+    /** The app's own Android pages: App settings (storage, permissions, force stop) and Uninstall. */
     private void appSystemItems(Sheet.Builder b, String pkg) {
         b.header("App");
-        b.item("App info", null, true, () -> {
+        b.item("App settings", null, true, () -> {
             sheet.close();
             settingsFor(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg);
         });
-        boolean system = false;
+        int flags = 0;
         try {
-            system = (activity.getPackageManager().getApplicationInfo(pkg, 0).flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0;
+            flags = activity.getPackageManager().getApplicationInfo(pkg, 0).flags;
         } catch (Exception ignored) {
         }
-        if (!system) {
-            b.item("Uninstall", null, true, () -> {
+        boolean system = (flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0;
+        boolean updated = (flags & android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0;
+        // Apps you installed can be uninstalled; apps that came with the TV only lose their updates.
+        if (!system || updated) {
+            b.item(system ? "Uninstall updates" : "Uninstall", null, true, () -> {
                 sheet.close();
                 try {
                     activity.startActivity(new Intent(Intent.ACTION_DELETE, android.net.Uri.parse("package:" + pkg))
