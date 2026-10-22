@@ -1218,12 +1218,16 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
                 Object app = card.getTag(TAG_APP);
                 View row = rowOf(card);
                 int layoutIndex = rowIndex.get(rowViews.indexOf(row));
-                layout.moveApp(layoutIndex, ((String[]) app)[0], j - i);
                 View other = cards.getChildAt(j);
+                List<String> saved = layout.rows().get(layoutIndex).apps;
+                String pkg = ((String[]) app)[0], otherPkg = ((String[]) other.getTag(TAG_APP))[0];
+                // By saved position: hidden or uninstalled apps can sit between the two cards on screen.
+                layout.moveApp(layoutIndex, pkg, saved.indexOf(otherPkg) - saved.indexOf(pkg));
+                // The neighbour changes places, not the selected card: taking that one out would drop the selection
+                // for a moment, and the whole screen would jump to another row and back.
                 slide(cards, () -> {
-                    cards.removeViewAt(i);
-                    cards.addView(card, j);
-                    card.requestFocus();
+                    cards.removeView(other);
+                    cards.addView(other, i);
                 }, false, card, other);
                 return true;
             }
