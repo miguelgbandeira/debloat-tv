@@ -217,8 +217,9 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         addView(scroll, indexOfChild(bar), match());
 
         appsGrid = new AppsGrid(a);
-        appsGrid.setActions((pkg, label, tile) -> open(Apps.item(pkg, label), tile),
-                (pkg, label, tile) -> openSheet(b -> menus.gridAppPage(b, pkg, label)),
+        // Debloat TV's own tile in All Apps opens its settings (you're already on its home screen).
+        appsGrid.setActions((pkg, label, tile) -> { if (isSelf(pkg)) openSettings(); else open(Apps.item(pkg, label), tile); },
+                (pkg, label, tile) -> { if (isSelf(pkg)) openSettings(); else openSheet(b -> menus.gridAppPage(b, pkg, label)); },
                 this::appsClosed);
         addView(appsGrid, match());
 
@@ -1006,9 +1007,10 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         }
         List<String[]> apps = new ArrayList<>();
         for (String[] app : Apps.all(activity)) {
-            if (layout.hiddenApps().contains(app[0]) || app[0].equals(activity.getPackageName())) continue;
+            if (layout.hiddenApps().contains(app[0])) continue;
             apps.add(app);
         }
+        apps.add(new String[] {activity.getPackageName(), "Debloat TV"});
         java.util.Collections.sort(apps, (x, y) -> x[1].compareToIgnoreCase(y[1]));
         appsGrid.show(apps, select);
     }
@@ -1283,6 +1285,11 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         }
         View back = focusBeforeSheet;
         String tag = back != null && back.getTag() instanceof String ? (String) back.getTag() : null;
+        // Where the card was: if it's gone (removed from its row), the selection stays in that row.
+        View backRow = back == null ? null : rowOf(back);
+        int shown = backRow == null ? -1 : rowViews.indexOf(backRow);
+        int backLayoutRow = shown < 0 ? -1 : rowIndex.get(shown);
+        int backPos = shown < 0 ? -1 : cards(backRow).indexOfChild(back);
         setSheetBehind(false);
         if (needsBuild()) build(false);   // nothing changed: the rows stay as they are
         if (pendingFocusRow >= 0) {
@@ -1292,8 +1299,23 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         }
         View again = tag == null ? null : rows.findViewWithTag(tag);
         if (again == null && back != null && back.isAttachedToWindow()) again = back;
+        if (again == null && backLayoutRow >= 0) again = nearCard(backLayoutRow, backPos);
         if (again != null) again.requestFocus();
         else focusFirst();
+    }
+
+    /** The card at `pos` in a row (or the one before it, when it was the last); else the nearest row still shown. */
+    View nearCard(int layoutRow, int pos) {
+        if (rowViews.isEmpty()) return null;
+        int i = rowIndex.indexOf(layoutRow);
+        if (i < 0) {
+            i = 0;
+            while (i < rowIndex.size() - 1 && rowIndex.get(i) < layoutRow) i++;
+            return firstCard(cards(rowViews.get(i)));
+        }
+        LinearLayout cards = cards(rowViews.get(i));
+        if (cards.getChildCount() <= TOOLS) return null;
+        return cards.getChildAt(Math.max(TOOLS, Math.min(pos, cards.getChildCount() - 1)));
     }
 
     /** A remote button set to one of the home screen's places. */
@@ -1313,6 +1335,10 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
     }
 
     /** The Settings menu (or closes it when it's already open). */
+    boolean isSelf(String pkg) {
+        return activity.getPackageName().equals(pkg);
+    }
+
     void openSettings() {
         if (appsGrid.isOpen()) appsGrid.close();
         if (sheet.isOpen()) sheet.close();
