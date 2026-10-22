@@ -39,6 +39,7 @@ final class Store {
         String u = get(c, UNITS, "");
         if (u.equals("F")) return true;
         if (u.equals("C")) return false;
-        return "US".equals(java.util.Locale.getDefault().getCountry());
+        String r = region(c);   // the country's own unit (TVs often say en-US whatever the country)
+        return r.equals("US") || r.equals("LR") || r.equals("MM");
     }
 }
