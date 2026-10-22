@@ -200,6 +200,7 @@ final class Trakt {
     // MARK: - HTTP
 
     static final class HttpError extends IOException {
+        private static final long serialVersionUID = 1L;
         final int code;
         HttpError(int code) {
             super("Trakt returned HTTP " + code);

@@ -1,15 +1,12 @@
 package tv.debloat.home;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.Paint;
-import android.graphics.RectF;
 import android.graphics.drawable.GradientDrawable;
 import android.net.ConnectivityManager;
 import android.net.NetworkCapabilities;
@@ -22,7 +19,6 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
-import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
@@ -30,7 +26,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import java.io.InputStream;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -431,9 +426,6 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         return "aurora";   // e.g. "posters", from before posters became the on-hover layer
     }
 
-    private boolean fixedBackground() {
-        return true;
-    }
 
     private String backgroundName() {
         for (String[] b : BACKGROUNDS) if (b[0].equals(background())) return b[1];
@@ -626,12 +618,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
             if (r.hidden) continue;
             List<Title> titles = titles(r.type);
             if (titles != null) {
-                if (titles.isEmpty()) {
-                    View hint = signInCard(r.type);
-                    if (hint == null) continue;
-                    row(r.title(), i).addView(hint);
-                    continue;
-                }
+                if (titles.isEmpty()) continue;   // a row shows once it has titles
                 LinearLayout cards = row(r.title(), i);
                 for (Title t : titles) cards.addView(titleCard(t, i));
             } else if (r.isApps()) {
@@ -645,13 +632,6 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
                     cards.addView(appCard(pkg, label(installed, pkg), i));
                 }
                 if (cards.getChildCount() == TOOLS) cards.addView(emptyCard(i));
-            } else if (r.type.equals(HomeLayout.ALL_APPS)) {
-                LinearLayout cards = row(r.title(), i);
-                for (String[] app : installed) {
-                    if (layout.inAppRow(app[0]) || layout.hiddenApps().contains(app[0]) || app[0].equals(activity.getPackageName())) continue;
-                    cards.addView(appCard(app[0], app[1], i));
-                }
-                if (cards.getChildCount() == TOOLS) dropLastRow();
             } else if (r.type.equals(HomeLayout.INPUTS)) {
                 LinearLayout cards = row(r.title(), i);
                 if (Apps.liveTv(activity) != null) {
@@ -670,12 +650,6 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
             }
         }
         if (autoFocus && (focused == null || keepInRows)) focusFirst();
-    }
-
-    private void dropLastRow() {
-        View last = rowViews.remove(rowViews.size() - 1);
-        rowIndex.remove(rowIndex.size() - 1);
-        rows.removeView(last);
     }
 
     private void focusFirst() {
@@ -718,7 +692,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         cards.setClipToPadding(false);
         h.addView(cards);
         row.addView(h);
-        // Left of the first card (Projectivy style): ⇅ moves the row with Up/Down, ⚙ opens its settings.
+        // Left of the first card: ⇅ moves the row with Up/Down, ⚙ opens its settings.
         cards.addView(rowTool(arrowsIcon(px(36), Color.WHITE), "move:" + layoutIndex, layoutIndex, true));
         cards.addView(rowTool(symbol("settings"), "gear:" + layoutIndex, layoutIndex, false));
         // Hide ⇅ and ⚙ off the left edge once the row has its size.
@@ -882,26 +856,6 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         card.addView(t, match());
         card.setOnClickListener(v -> openSheet(p -> rowSettingsPage(p, layoutIndex)));
         return card;
-    }
-
-    /** For a title row with nothing yet: sign in (Stremio, Trakt), or nothing (still loading). */
-    private View signInCard(String type) {
-        if (type != null) return null;   // signing in is part of setup and Home settings, not a card in the rows
-        boolean stremio = type.equals(HomeLayout.CONTINUE) || type.equals(HomeLayout.LIBRARY);
-        if (stremio ? Stremio.signedIn(activity) : (!Trakt.configured() || recs.traktMode())) return null;
-        int index = layout.rows().indexOf(rowOfType(type));
-        FrameLayout card = card(CARD_W, CARD_H, "signin:" + type, index);
-        TextView t = text(26, Color.WHITE, Fonts.semibold);
-        t.setText(stremio ? "Sign in to Stremio" : "Sign in to Trakt");
-        t.setGravity(Gravity.CENTER);
-        card.addView(t, match());
-        card.setOnClickListener(v -> activity.startActivity(new Intent(activity, stremio ? StremioLoginActivity.class : TraktLoginActivity.class)));
-        return card;
-    }
-
-    private HomeLayout.Row rowOfType(String type) {
-        for (HomeLayout.Row r : layout.rows()) if (r.type.equals(type)) return r;
-        return null;
     }
 
     private View shortcutCard(Apps.Item it, int layoutIndex) {
@@ -1135,16 +1089,6 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         backdropNext.animate().alpha(0f).setDuration(300).start();
     }
 
-    private Title homeTitle() {
-        for (View row : rowViews) {
-            LinearLayout cards = cards(row);
-            for (int i = 0; i < cards.getChildCount(); i++) {
-                Object t = cards.getChildAt(i).getTag(TAG_TITLE);
-                if (t instanceof Title) return (Title) t;
-            }
-        }
-        return null;
-    }
 
     /** The rows above the selected one fade away, and the selected one sits under the backdrop's text. */
     private void onRowFocused(View row) {

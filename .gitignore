@@ -3,3 +3,4 @@ DebloatTV.apk
 *.keystore
 .DS_Store
 debloat.conf
+*.idsig

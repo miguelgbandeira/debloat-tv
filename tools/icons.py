@@ -22,8 +22,8 @@ ICONS = {
     "sunny": ("sunny", True), "clear_night": ("clear_night", True), "partly_cloudy_day": ("partly_cloudy_day", True),
     "partly_cloudy_night": ("partly_cloudy_night", True), "cloud": ("cloud", True), "foggy": ("foggy", True),
     "rainy": ("rainy", True), "snow": ("ac_unit", False), "thunderstorm": ("thunderstorm", True),
-    "remote": ("settings_remote", True), "account": ("account_circle", True), "palette": ("palette", True),
-    "rows": ("view_agenda", True), "visibility_off": ("visibility_off", True), "location": ("location_on", True),
+    "remote": ("settings_remote", True),
+    "rows": ("view_agenda", True), "location": ("location_on", True),
     "key": ("key", True),
 }
 

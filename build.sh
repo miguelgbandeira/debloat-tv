@@ -15,10 +15,10 @@ rm -rf build && mkdir -p build/classes build/dex
 "$TOOLS/aapt2" compile --dir app/res -o build/res.zip
 "$TOOLS/aapt2" link -o build/base.apk -I "$PLATFORM" --manifest app/AndroidManifest.xml --java build/gen \
   -A app/assets --min-sdk-version 26 --target-sdk-version 33 -0 ttf build/res.zip
-"${JAVA_BIN}javac" -nowarn -encoding UTF-8 --release 11 -cp "$PLATFORM" -d build/classes \
-  $(find app/src build/gen -name '*.java') 2>&1 | grep -v '^Note:' || true
-[ -n "$(find build/classes -name '*.class' | head -1)" ] || { echo "Compile failed." >&2; exit 1; }
-"$TOOLS/d8" --lib "$PLATFORM" --min-api 26 --output build/dex $(find build/classes -name '*.class')
+find app/src build/gen -name '*.java' > build/sources.txt
+"${JAVA_BIN}javac" -nowarn -encoding UTF-8 --release 11 -cp "$PLATFORM" -d build/classes @build/sources.txt
+(cd build/classes && "${JAVA_BIN}jar" cf ../classes.jar .)
+"$TOOLS/d8" --lib "$PLATFORM" --min-api 26 --output build/dex build/classes.jar
 cp build/base.apk build/unsigned.apk
 (cd build/dex && zip -q ../unsigned.apk classes.dex)
 "$TOOLS/zipalign" -f 4 build/unsigned.apk build/aligned.apk

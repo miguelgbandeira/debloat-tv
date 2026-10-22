@@ -45,9 +45,8 @@ public final class HomeActivity extends Activity {
 
     @Override public boolean dispatchKeyEvent(KeyEvent event) {
         if (home.onKey(event)) return true;
+        // Back on the home screen itself does nothing: there's nothing behind it.
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) return true;
         return super.dispatchKeyEvent(event);
     }
-
-    /** Back on the home screen does nothing (there's nothing behind it). */
-    @Override public void onBackPressed() {}
 }

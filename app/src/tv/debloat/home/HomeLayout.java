@@ -18,7 +18,7 @@ import java.util.Set;
  */
 final class HomeLayout {
     static final String CONTINUE = "continue", LIBRARY = "library", UP_NEXT = "upnext", FOR_YOU = "foryou",
-            TRENDING = "trending", APPS = "apps", ALL_APPS = "allapps", INPUTS = "inputs", POPULAR = "popular", NEW = "new";
+            TRENDING = "trending", APPS = "apps", INPUTS = "inputs", POPULAR = "popular", NEW = "new";
 
     static final class Row {
         String type, name = "";
@@ -37,7 +37,6 @@ final class HomeLayout {
                 case UP_NEXT: return "Up next on Trakt";
                 case FOR_YOU: return "For you";
                 case TRENDING: return "Trending";
-                case ALL_APPS: return "All apps";
                 case INPUTS: return "Inputs & settings";
                 default: return name;
             }
@@ -97,31 +96,6 @@ final class HomeLayout {
             rows.clear();
         }
         if (rows.isEmpty()) defaults();
-        // All apps is a grid now (top right, and the tile at the end of Favorites), no longer a row.
-        boolean dropped = false;
-        for (int i = rows.size() - 1; i >= 0; i--) {
-            if (ALL_APPS.equals(rows.get(i).type)) {
-                rows.remove(i);
-                dropped = true;
-            }
-        }
-        if (dropped) save();
-        // Early builds put the All Apps tile at the end of the last app row: it belongs first in Apps (once).
-        if (!prefs.getBoolean("allAppsFirst", false)) {
-            prefs.edit().putBoolean("allAppsFirst", true).apply();
-            for (Row r : rows) {
-                if (r.isApps() && "Apps".equals(r.name) && r.apps.remove(ALL_APPS_TILE)) {
-                    r.apps.add(0, ALL_APPS_TILE);
-                    save();
-                }
-            }
-        }
-    }
-
-    /** The last app row (Tools unless renamed or moved), or -1. */
-    int lastAppRow() {
-        for (int i = rows.size() - 1; i >= 0; i--) if (rows.get(i).isApps()) return i;
-        return -1;
     }
 
     /** The All Apps tile's entry in an app row (moved and removed like an app). */
@@ -317,11 +291,5 @@ final class HomeLayout {
     void showApp(String pkg) {
         hiddenApps.remove(pkg);
         save();
-    }
-
-    /** Whether one of the app rows has the app (then All apps leaves it out). */
-    boolean inAppRow(String pkg) {
-        for (Row r : rows) if (r.isApps() && r.apps.contains(pkg)) return true;
-        return false;
     }
 }
