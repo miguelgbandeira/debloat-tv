@@ -50,11 +50,26 @@ final class HomeLayout {
     private final List<Row> rows = new ArrayList<>();
     private final Set<String> hiddenApps = new LinkedHashSet<>();
 
-    /** Well-known streaming apps: the first ones found go into Favorites on a new TV. */
+    /** Well-known video apps (Video row on a new TV). */
     private static final String[] STREAMING = {"com.netflix.ninja", "com.google.android.youtube.tv",
             "com.amazon.amazonvideo.livingroom", "com.disney.disneyplus", "com.wbd.stream", "com.hbo.hbonow",
             "com.apple.atve.androidtv.appletv", "com.hulu.livingroomplus", "com.cbs.ott", "com.peacocktv.peacockandroid",
-            "com.stremio.one", "org.jellyfin.androidtv", "com.plexapp.android", "com.spotify.tv.android"};
+            "com.skyshowtime.skyshowtime.google", "com.crunchyroll.crunchyroid", "com.stremio.one", "org.jellyfin.androidtv",
+            "com.plexapp.android", "org.xbmc.kodi", "org.smarttube.stable", "com.teamsmart.videomanager.tv",
+            "tv.twitch.android.app", "com.nousguide.android.rbtv", "pt.rtp.play", "com.brouken.player",
+            "org.videolan.vlc", "se.hedekonsult.sparkle", "com.mubi", "com.filmin.filminandroidtv", "com.google.android.videos"};
+
+    /** Well-known music apps (Music row). */
+    private static final String[] MUSIC = {"com.spotify.tv.android", "com.google.android.youtube.tvmusic",
+            "com.amazon.music.tv", "com.apple.android.music", "deezer.android.tv", "com.aspiro.tidal",
+            "com.soundcloud.android", "tunein.player", "org.radioplayer.androidtv", "com.qobuz.music"};
+
+    /** Video apps not in the list, by name (IPTV players and the like). */
+    private static boolean looksLikeVideo(String name) {
+        String n = name.toLowerCase(java.util.Locale.ROOT);
+        return n.contains(" tv") || n.endsWith("tv") || n.contains("iptv") || n.contains("player") || n.contains("video")
+                || n.contains("play") && !n.contains("store");
+    }
 
     private final Context context;
 
@@ -133,19 +148,24 @@ final class HomeLayout {
     private void defaults() {
         if (importLayout()) return;
         add(CONTINUE, "", false);
-        Row fav = add(APPS, "Favorites", false);
-        java.util.Set<String> installed = new java.util.HashSet<>();
-        for (String[] app : Apps.launchable(context)) installed.add(app[0]);
-        for (String pkg : STREAMING) if (installed.contains(pkg) && fav.apps.size() < 6) fav.apps.add(pkg);
+        add(APPS, "Favorites", false);   // empty to start: hold OK on any app to add it
         add(POPULAR, "", false);
         add(NEW, "", false);
         add(FOR_YOU, "", false);
         add(TRENDING, "", false);
-        Row other = add(APPS, "Apps", false);
-        java.util.List<String[]> rest = Apps.launchable(context);
-        java.util.Collections.sort(rest, (x, y) -> x[1].compareToIgnoreCase(y[1]));
-        for (String[] app : rest) if (!fav.apps.contains(app[0])) other.apps.add(app[0]);
-        other.apps.add(ALL_APPS_TILE);
+        java.util.List<String[]> all = Apps.launchable(context);
+        java.util.Collections.sort(all, (x, y) -> x[1].compareToIgnoreCase(y[1]));
+        Row video = add(APPS, "Video", false), music = add(APPS, "Music", false), other = add(APPS, "Apps", false);
+        other.apps.add(ALL_APPS_TILE);   // first in Apps
+        java.util.Set<String> installed = new java.util.HashSet<>();
+        for (String[] app : all) installed.add(app[0]);
+        for (String pkg : STREAMING) if (installed.contains(pkg)) video.apps.add(pkg);
+        for (String pkg : MUSIC) if (installed.contains(pkg)) music.apps.add(pkg);
+        for (String[] app : all) {
+            if (video.apps.contains(app[0]) || music.apps.contains(app[0])) continue;
+            if (looksLikeVideo(app[1])) video.apps.add(app[0]);
+            else other.apps.add(app[0]);
+        }
         add(LIBRARY, "", false);
         add(UP_NEXT, "", true);
         add(INPUTS, "", false);

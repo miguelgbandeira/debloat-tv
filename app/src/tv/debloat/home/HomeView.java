@@ -1556,6 +1556,40 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         b.item("Move to another row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, inRow ? row : -1)));
         if (inRow && !tile) b.item("Also add to another row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, -1)));
         if (inRow) b.item("Remove from this row", null, false, () -> { layout.removeApp(row, pkg); sheet.close(); });
+        if (!tile) appSystemItems(b, pkg);
+    }
+
+    /** The app's own Android pages: App info (storage, permissions, force stop) and Uninstall. */
+    private void appSystemItems(Sheet.Builder b, String pkg) {
+        b.header("App");
+        b.item("App info", null, true, () -> {
+            sheet.close();
+            settingsFor(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg);
+        });
+        boolean system = false;
+        try {
+            system = (activity.getPackageManager().getApplicationInfo(pkg, 0).flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0;
+        } catch (Exception ignored) {
+        }
+        if (!system) {
+            b.item("Uninstall", null, true, () -> {
+                sheet.close();
+                try {
+                    activity.startActivity(new Intent(Intent.ACTION_DELETE, android.net.Uri.parse("package:" + pkg))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                } catch (Exception e) {
+                    settingsFor(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg);
+                }
+            });
+        }
+    }
+
+    private void settingsFor(String action, String pkg) {
+        try {
+            activity.startActivity(new Intent(action, android.net.Uri.parse("package:" + pkg)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        } catch (Exception e) {
+            settings(android.provider.Settings.ACTION_SETTINGS);
+        }
     }
 
     private boolean startMoveAfterSheet;
@@ -1570,6 +1604,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         }
         b.item("Add to a row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, -1)));
         b.item("Hide app", null, false, () -> { layout.hideApp(pkg); gridChanged = true; sheet.close(); });
+        appSystemItems(b, pkg);
     }
 
     private boolean gridChanged;   // an app was hidden from All Apps: the grid is made again when the page closes

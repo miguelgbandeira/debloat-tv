@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
     <!-- The Animations switch. Granted once by the installer (pm grant). -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <!-- "Uninstall" in an app's menu (Android asks you to confirm). -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />

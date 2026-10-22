@@ -73,7 +73,7 @@ case "$list" in *"$PKG/"*) ;; null|"") tv settings put secure enabled_accessibil
 tv settings put secure accessibility_enabled 1
 
 if [ -n "$CONFIG" ]; then
-  say "Settings from $CONFIG…"
+  say "Settings from ${CONFIG}…"
   args=()
   while IFS='=' read -r k v; do
     case "$k" in ''|\#*) continue ;; esac
@@ -106,5 +106,6 @@ tv input keyevent KEYCODE_HOME
 current=$(tv cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1)
 if [ "${current%%/*}" = "$PKG" ]; then say "Done: Home opens Debloat TV."; else say "Installed, but Home still opens $current."; fi
 echo
-echo "Note: on TCL TVs, remote buttons can stop after the TV restarts. Run this installer again to turn them back on."
+echo "Keep USB debugging on: Debloat TV uses it to turn remote buttons back on after a restart (TCL and others),"
+echo "and for the Home switch in its settings. The TV asks \"Allow USB debugging?\" once for Debloat TV: allow it."
 echo "Undo any time:  ./install.sh ${TV%:5555} --undo"
