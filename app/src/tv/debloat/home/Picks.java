@@ -35,24 +35,31 @@ final class Picks {
         String key, group, kind, title, card, backdrop, meta = "", overview = "", note, link, pkg;
     }
 
-    /** Streaming services TMDB knows (part of its name, lowercase) → their Android TV apps. */
-    private static final String[][] SERVICES = {
-        {"netflix", "Netflix", "com.netflix.ninja"},
-        {"amazon prime video", "Prime Video", "com.amazon.amazonvideo.livingroom"},
-        {"prime video", "Prime Video", "com.amazon.amazonvideo.livingroom"},
-        {"disney plus", "Disney+", "com.disney.disneyplus"},
-        {"max", "Max", "com.wbd.stream"},
-        {"hbo max", "Max", "com.hbo.hbonow"},
-        {"apple tv", "Apple TV", "com.apple.atve.androidtv.appletv"},
-        {"hulu", "Hulu", "com.hulu.livingroomplus"},
-        {"paramount plus", "Paramount+", "com.cbs.ott"},
-        {"peacock", "Peacock", "com.peacocktv.peacockandroid"},
-        {"skyshowtime", "SkyShowtime", "com.skyshowtime.skyshowtime.google"},
-        {"crunchyroll", "Crunchyroll", "com.crunchyroll.crunchyroid"},
-        {"rtp play", "RTP Play", "pt.rtp.play"},
-        {"filmin", "Filmin", "com.filmin.filminandroidtv"},
-        {"mubi", "MUBI", "com.mubi"},
-    };
+    /** TMDB's name for a streaming service (lowercase) → its Android TV app. */
+    private static final Map<String, String> APP_FOR = new LinkedHashMap<>();
+    /** The app → the name shown on the cards. */
+    private static final Map<String, String> NAME_OF = new LinkedHashMap<>();
+
+    private static void known(String app, String name, String... tmdbNames) {
+        NAME_OF.put(app, name);
+        for (String t : tmdbNames) APP_FOR.put(t, app);
+    }
+
+    static {
+        known("com.netflix.ninja", "Netflix", "netflix", "netflix basic with ads");
+        known("com.amazon.amazonvideo.livingroom", "Prime Video", "amazon prime video", "prime video", "amazon prime video with ads");
+        known("com.disney.disneyplus", "Disney+", "disney plus");
+        known("com.wbd.stream", "Max", "max", "hbo max");
+        known("com.apple.atve.androidtv.appletv", "Apple TV", "apple tv plus", "apple tv+");
+        known("com.hulu.livingroomplus", "Hulu", "hulu");
+        known("com.cbs.ott", "Paramount+", "paramount plus", "paramount+");
+        known("com.peacocktv.peacockandroid", "Peacock", "peacock", "peacock premium");
+        known("com.skyshowtime.skyshowtime.google", "SkyShowtime", "skyshowtime");
+        known("com.crunchyroll.crunchyroid", "Crunchyroll", "crunchyroll");
+        known("pt.rtp.play", "RTP Play", "rtp play");
+        known("com.filmin.filminandroidtv", "Filmin", "filmin");
+        known("com.mubi", "MUBI", "mubi");
+    }
 
     private static Picks instance;
 
@@ -177,12 +184,13 @@ final class Picks {
     private List<Pick> fetchServices(String key) throws Exception {
         String region = Store.region(context);
         // The services TMDB has in your country that have an app on this TV: TMDB id → {name, package}.
-        Map<Integer, String[]> mine = new LinkedHashMap<>();
+        Map<Integer, String[]> mine = new LinkedHashMap<>();   // TMDB provider id → {name, app}
         JSONArray providers = tmdb(key, "/watch/providers/movie?watch_region=" + region).getJSONArray("results");
+        java.util.Set<String> taken = new java.util.HashSet<>();
         for (int i = 0; i < providers.length(); i++) {
             JSONObject o = providers.getJSONObject(i);
-            String[] s = service(o.optString("provider_name"));
-            if (s != null && Apps.installed(context, s[2]) && !alreadyHas(mine, s[2])) mine.put(o.getInt("provider_id"), s);
+            String app = APP_FOR.get(o.optString("provider_name").toLowerCase(Locale.ROOT));
+            if (app != null && Apps.installed(context, app) && taken.add(app)) mine.put(o.getInt("provider_id"), new String[] {NAME_OF.get(app), app});
         }
         List<Pick> out = new ArrayList<>();
         if (mine.isEmpty()) return out;
@@ -208,17 +216,6 @@ final class Picks {
         return out;
     }
 
-    private static boolean alreadyHas(Map<Integer, String[]> m, String pkg) {
-        for (String[] s : m.values()) if (s[2].equals(pkg)) return true;
-        return false;
-    }
-
-    private static String[] service(String tmdbName) {
-        String n = tmdbName.toLowerCase(Locale.ROOT);
-        for (String[] s : SERVICES) if (n.equals(s[0]) || n.startsWith(s[0] + " ")) return s;
-        return null;
-    }
-
     private static void addAll(List<Pick> out, JSONArray a, String kind, String group, String[] service, int max) {
         for (int i = 0; i < a.length() && out.size() < max * 2; i++) {
             JSONObject o = a.optJSONObject(i);
@@ -235,8 +232,8 @@ final class Picks {
             p.overview = o.optString("overview", "");
             String date = o.optString(kind.equals("movie") ? "release_date" : "first_air_date", "");
             p.meta = (kind.equals("movie") ? "Movie" : "Series") + (date.length() >= 4 ? " · " + date.substring(0, 4) : "")
-                    + " · " + service[1];
-            p.pkg = service[2];
+                    + " · " + service[0];
+            p.pkg = service[1];
             out.add(p);
         }
     }

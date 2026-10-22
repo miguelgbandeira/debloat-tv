@@ -58,18 +58,18 @@ final class TvControl {
 
     /** Allows the app to start at boot (TCL), and re-binds the key service (other accessibility services stay). */
     private static void startButtons(Adb adb) throws java.io.IOException {
-        adb.shell("cmd appops set tv.debloat.home AUTO_START allow");
-        String list = adb.shell("settings get secure enabled_accessibility_services").trim();
+        adb.run("cmd appops set tv.debloat.home AUTO_START allow");
+        String list = adb.run("settings get secure enabled_accessibility_services").trim();
         StringBuilder others = new StringBuilder();
         for (String s : list.split(":")) {
             if (s.isEmpty() || s.equals("null") || s.equals(SERVICE)) continue;
             others.append(others.length() == 0 ? "" : ":").append(s);
         }
         // Off, then on: that's what makes Android bind it again.
-        if (others.length() == 0) adb.shell("settings delete secure enabled_accessibility_services");
-        else adb.shell("settings put secure enabled_accessibility_services '" + others + "'");
-        adb.shell("settings put secure enabled_accessibility_services '" + (others.length() == 0 ? SERVICE : others + ":" + SERVICE) + "'");
-        adb.shell("settings put secure accessibility_enabled 1");
+        if (others.length() == 0) adb.run("settings delete secure enabled_accessibility_services");
+        else adb.run("settings put secure enabled_accessibility_services '" + others + "'");
+        adb.run("settings put secure enabled_accessibility_services '" + (others.length() == 0 ? SERVICE : others + ":" + SERVICE) + "'");
+        adb.run("settings put secure accessibility_enabled 1");
     }
 
     /** Is the TV's own home screen turned off (so Home opens Debloat TV)? */
@@ -87,19 +87,19 @@ final class TvControl {
             String error = null;
             try (Adb adb = Adb.connect(c, 20000)) {
                 if (debloat) {
-                    if (adb.shell("dumpsys wifi").contains("cname=" + GOOGLE_SETUP)) {
+                    if (adb.run("dumpsys wifi").contains("cname=" + GOOGLE_SETUP)) {
                         throw new java.io.IOException("The TV's first setup saved a Wi-Fi network: forget it and connect again in Settings → Network, then try once more.");
                     }
-                    adb.shell("cmd role add-role-holder --user 0 android.app.role.HOME tv.debloat.home");
-                    adb.shell("pm disable-user --user 0 " + GOOGLE_HOME);
-                    adb.shell("pm disable-user --user 0 " + GOOGLE_SETUP);
+                    adb.run("cmd role add-role-holder --user 0 android.app.role.HOME tv.debloat.home");
+                    adb.run("pm disable-user --user 0 " + GOOGLE_HOME);
+                    adb.run("pm disable-user --user 0 " + GOOGLE_SETUP);
                 } else {
-                    adb.shell("pm enable " + GOOGLE_SETUP);
-                    adb.shell("pm enable " + GOOGLE_HOME);
-                    adb.shell("cmd role add-role-holder --user 0 android.app.role.HOME " + GOOGLE_HOME);
+                    adb.run("pm enable " + GOOGLE_SETUP);
+                    adb.run("pm enable " + GOOGLE_HOME);
+                    adb.run("cmd role add-role-holder --user 0 android.app.role.HOME " + GOOGLE_HOME);
                 }
             } catch (Exception e) {
-                error = e.getMessage() == null ? e.toString() : e.getMessage();
+                error = String.valueOf(e.getMessage() != null ? e.getMessage() : e);
             }
             String result = error;
             MAIN.post(() -> done.on(result));

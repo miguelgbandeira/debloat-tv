@@ -73,22 +73,11 @@ final class Thumbs {
             try {
                 File f = new File(dir, Integer.toHexString(url.hashCode()) + ".img");
                 if (!f.exists()) download(url, f);
-                BitmapFactory.Options bounds = new BitmapFactory.Options();
-                bounds.inJustDecodeBounds = true;
-                BitmapFactory.decodeFile(f.getPath(), bounds);
-                BitmapFactory.Options opts = new BitmapFactory.Options();
-                opts.inSampleSize = 1;
-                while (bounds.outWidth / (opts.inSampleSize * 2) >= width) opts.inSampleSize *= 2;
-                Bitmap b = BitmapFactory.decodeFile(f.getPath(), opts);
+                Bitmap b = Images.decodeToWidth(f, width);
                 if (b == null) {
                     //noinspection ResultOfMethodCallIgnored
                     f.delete();
                     return;
-                }
-                if (b.getWidth() > width * 1.3) {
-                    Bitmap scaled = Bitmap.createScaledBitmap(b, width, Math.round(b.getHeight() * (float) width / b.getWidth()), true);
-                    if (scaled != b) b.recycle();
-                    b = scaled;
                 }
                 memory.put(key, b);
                 Bitmap result = b;
@@ -104,7 +93,7 @@ final class Thumbs {
     }
 
     private void download(String url, File f) throws IOException {
-        File part = new File(f.getPath() + ".part");
+        File part = new File(dir, f.getName() + ".download");
         HttpURLConnection c = (HttpURLConnection) new URL(url).openConnection();
         c.setConnectTimeout(8000);
         c.setReadTimeout(20000);
@@ -119,7 +108,7 @@ final class Thumbs {
         } finally {
             c.disconnect();
         }
-        if (!part.renameTo(f)) throw new IOException("couldn't save the image");
+        if (!part.renameTo(f)) throw new IOException("image not saved: " + url);
         prune();
     }
 

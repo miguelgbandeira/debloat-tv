@@ -34,14 +34,21 @@ import javax.crypto.Cipher;
  * between Debloat TV and the TV's own home screen). The TV asks once, "Allow USB debugging?", for this app's key.
  *
  * Protocol: messages with a 24-byte little-endian header (command, arg0, arg1, data length, data checksum, magic);
- * CNXN to connect, AUTH with an RSA key (sign the device's token, or send the public key for approval), OPEN a
- * "shell:" stream, then WRTE/OKAY until CLSE.
+ * A_CNXN to connect, A_AUTH with an RSA key (sign the device's token, or send the public key for approval), A_OPEN a
+ * "shell:" stream, then A_WRTE/A_OKAY until A_CLSE.
  */
-final class Adb implements Closeable {
-    private static final int CNXN = 0x4e584e43, AUTH = 0x48545541, OPEN = 0x4e45504f, OKAY = 0x59414b4f,
-            CLSE = 0x45534c43, WRTE = 0x45545257;
-    private static final int VERSION = 0x01000001, MAX_DATA = 256 * 1024;
-    private static final int AUTH_TOKEN = 1, AUTH_SIGNATURE = 2, AUTH_RSAPUBLICKEY = 3;
+final class Adb implements Closeable {   // our own client, written from AOSP's protocol notes
+    // Command words, as named in AOSP's adb protocol notes (packages/modules/adb/protocol.txt): the ASCII letters,
+    // read as a little-endian int.
+    private static final int A_CNXN = word("CNXN"), A_AUTH = word("AUTH"), A_OPEN = word("OPEN"), A_OKAY = word("OKAY"),
+            A_CLSE = word("CLSE"), A_WRTE = word("WRTE");
+    private static final int A_VERSION = 0x01000001, MAX_PAYLOAD = 256 * 1024;
+    private static final int TOKEN = 1, SIGNATURE = 2, PUBLIC_KEY = 3;   // A_AUTH types
+
+    private static int word(String four) {
+        byte[] b = four.getBytes(StandardCharsets.US_ASCII);
+        return (b[0] & 0xff) | (b[1] & 0xff) << 8 | (b[2] & 0xff) << 16 | (b[3] & 0xff) << 24;
+    }
     /** PKCS#1 DigestInfo for SHA-1: adb signs its 20-byte token as if it were a SHA-1 digest. */
     private static final byte[] SHA1_PREFIX = {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05, 0x00, 0x04, 0x14};
 
@@ -87,39 +94,39 @@ final class Adb implements Closeable {
 
     private void handshake(Context c) throws IOException {
         KeyPair key = key(c);
-        send(CNXN, VERSION, MAX_DATA, "host::debloat-tv\0".getBytes(StandardCharsets.UTF_8));
+        write(A_CNXN, A_VERSION, MAX_PAYLOAD, "host::debloat-tv\0".getBytes(StandardCharsets.UTF_8));
         boolean signed = false;
         while (true) {
-            Message m = read();
-            if (m.command == CNXN) return;   // connected
-            if (m.command != AUTH || m.arg0 != AUTH_TOKEN) throw new IOException("unexpected adb answer");
+            Packet m = next();
+            if (m.command == A_CNXN) return;   // connected
+            if (m.command != A_AUTH || m.arg0 != TOKEN) throw new IOException("unexpected adb answer");
             if (!signed) {
-                send(AUTH, AUTH_SIGNATURE, 0, sign(key.getPrivate(), m.data));
+                write(A_AUTH, SIGNATURE, 0, sign(key.getPrivate(), m.data));
                 signed = true;
             } else {
                 // Our key isn't known yet: send it, and the TV asks "Allow USB debugging?".
-                send(AUTH, AUTH_RSAPUBLICKEY, 0, publicKey((RSAPublicKey) key.getPublic()));
+                write(A_AUTH, PUBLIC_KEY, 0, publicKey((RSAPublicKey) key.getPublic()));
             }
         }
     }
 
     /** Runs a shell command and returns what it printed. */
-    String shell(String command) throws IOException {
+    String run(String command) throws IOException {
         int local = nextId++;
-        send(OPEN, local, 0, ("shell:" + command + "\0").getBytes(StandardCharsets.UTF_8));
-        ByteArrayOutputStream result = new ByteArrayOutputStream();
+        write(A_OPEN, local, 0, ("shell:" + command + "\0").getBytes(StandardCharsets.UTF_8));
+        ByteArrayOutputStream printed = new ByteArrayOutputStream();
         int remote = 0;
         while (true) {
-            Message m = read();
+            Packet m = next();
             if (m.arg1 != local) continue;   // another stream (shouldn't happen: one at a time)
-            if (m.command == OKAY) {
+            if (m.command == A_OKAY) {
                 remote = m.arg0;
-            } else if (m.command == WRTE) {
-                result.write(m.data);
-                send(OKAY, local, m.arg0, new byte[0]);
-            } else if (m.command == CLSE) {
-                if (remote != 0) send(CLSE, local, remote, new byte[0]);
-                return result.toString("UTF-8");
+            } else if (m.command == A_WRTE) {
+                printed.write(m.data);
+                write(A_OKAY, local, m.arg0, new byte[0]);
+            } else if (m.command == A_CLSE) {
+                if (remote != 0) write(A_CLSE, local, remote, new byte[0]);
+                return printed.toString("UTF-8");
             }
         }
     }
@@ -133,12 +140,12 @@ final class Adb implements Closeable {
 
     // MARK: - Messages
 
-    private static final class Message {
+    private static final class Packet {
         int command, arg0, arg1;
         byte[] data;
     }
 
-    private void send(int command, int arg0, int arg1, byte[] data) throws IOException {
+    private void write(int command, int arg0, int arg1, byte[] data) throws IOException {
         ByteBuffer b = ByteBuffer.allocate(24 + data.length).order(ByteOrder.LITTLE_ENDIAN);
         int sum = 0;
         for (byte x : data) sum += x & 0xff;
@@ -147,17 +154,17 @@ final class Adb implements Closeable {
         out.flush();
     }
 
-    private Message read() throws IOException {
+    private Packet next() throws IOException {
         DataInputStream d = new DataInputStream(in);
         byte[] header = new byte[24];
         d.readFully(header);
         ByteBuffer b = ByteBuffer.wrap(header).order(ByteOrder.LITTLE_ENDIAN);
-        Message m = new Message();
+        Packet m = new Packet();
         m.command = b.getInt();
         m.arg0 = b.getInt();
         m.arg1 = b.getInt();
         int length = b.getInt();
-        if (length < 0 || length > MAX_DATA * 4) throw new IOException("bad adb message");
+        if (length < 0 || length > MAX_PAYLOAD * 4) throw new IOException("bad adb message");
         m.data = new byte[length];
         d.readFully(m.data);
         return m;

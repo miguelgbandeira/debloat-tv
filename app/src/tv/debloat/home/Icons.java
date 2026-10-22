@@ -66,12 +66,14 @@ final class Icons {
 
     /** The icon for a weather code (WMO codes, as Open-Meteo sends them). */
     static String weather(int code, boolean day) {
-        if (code <= 1) return day ? "sunny" : "clear_night";
-        if (code == 2) return day ? "partly_cloudy_day" : "partly_cloudy_night";
-        if (code == 3) return "cloud";
-        if (code == 45 || code == 48) return "foggy";
-        if ((code >= 71 && code <= 77) || code == 85 || code == 86) return "snow";
-        if (code >= 95) return "thunderstorm";
-        return "rainy";
+        switch (code) {
+            case 0: case 1: return day ? "sunny" : "clear_night";
+            case 2: return day ? "partly_cloudy_day" : "partly_cloudy_night";
+            case 3: return "cloud";
+            case 45: case 48: return "foggy";
+            case 71: case 73: case 75: case 77: case 85: case 86: return "snow";
+            case 95: case 96: case 99: return "thunderstorm";
+            default: return code < 0 ? "cloud" : "rainy";   // drizzle, rain and showers
+        }
     }
 }

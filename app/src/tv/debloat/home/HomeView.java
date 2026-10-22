@@ -216,7 +216,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         addView(scroll, indexOfChild(bar), match());
 
         appsGrid = new AppsGrid(a);
-        appsGrid.setActions((pkg, label, tile) -> open(Apps.app(pkg, label), tile),
+        appsGrid.setActions((pkg, label, tile) -> open(Apps.item(pkg, label), tile),
                 (pkg, label, tile) -> openSheet(b -> gridAppPage(b, pkg, label)),
                 this::appsClosed);
         addView(appsGrid, match());
@@ -619,7 +619,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         signature = currentSignature();
         builtVersion = layout.version;
 
-        List<String[]> installed = Apps.launchable(activity);
+        List<String[]> installed = Apps.all(activity);
         List<HomeLayout.Row> list = layout.rows();
         for (int i = 0; i < list.size(); i++) {
             HomeLayout.Row r = list.get(i);
@@ -843,7 +843,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
             card.addView(done, dp);
         }
         card.setTag(TAG_TITLE, t);
-        card.setOnClickListener(v -> open(Apps.app(t.pkg, t.title, t.link), v));
+        card.setOnClickListener(v -> open(Apps.item(t.pkg, t.title, t.link), v));
         return card;
     }
 
@@ -862,7 +862,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         }
         card.setContentDescription(label);
         card.setTag(TAG_APP, new String[] {pkg, label});
-        card.setOnClickListener(v -> open(Apps.app(pkg, label), v));
+        card.setOnClickListener(v -> open(Apps.item(pkg, label), v));
         card.setOnLongClickListener(v -> {
             appMenu(v, layoutIndex);
             return true;
@@ -1258,7 +1258,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
             setSheetBehind(true);
         }
         List<String[]> apps = new ArrayList<>();
-        for (String[] app : Apps.launchable(activity)) {
+        for (String[] app : Apps.all(activity)) {
             if (layout.hiddenApps().contains(app[0]) || app[0].equals(activity.getPackageName())) continue;
             apps.add(app);
         }
@@ -1693,7 +1693,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
     private void hiddenAppsPage(Sheet.Builder b) {
         b.icon(symbol("apps"), true).title("Hidden apps").subtitle("Apps you hid from the home screen and All Apps.");
         b.heading("Hidden apps");
-        List<String[]> installed = Apps.launchable(activity);
+        List<String[]> installed = Apps.all(activity);
         for (String pkg : new ArrayList<>(layout.hiddenApps())) {
             String l = label(installed, pkg);
             b.item(l == null ? pkg : l, "Hidden", false, () -> { layout.showApp(pkg); sheet.refresh(); });
@@ -1873,14 +1873,14 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
     private String liveTvName() {
         String pkg = Store.get(activity, Store.LIVE_TV, "");
         if (pkg.isEmpty()) return "None";
-        String l = label(Apps.launchable(activity), pkg);
+        String l = label(Apps.all(activity), pkg);
         return l == null ? "Not installed" : l;
     }
 
     private void liveTvPage(Sheet.Builder b) {
         List<String[]> apps = new ArrayList<>();
         apps.add(new String[] {"", "None"});
-        List<String[]> all = Apps.launchable(activity);
+        List<String[]> all = Apps.all(activity);
         java.util.Collections.sort(all, (x, y) -> x[1].compareToIgnoreCase(y[1]));
         apps.addAll(all);
         String current = Store.get(activity, Store.LIVE_TV, "");
@@ -1906,7 +1906,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         apps.add(new String[] {Buttons.ALL_APPS, "All Apps"});
         apps.add(new String[] {Buttons.HOME, "Home screen"});
         int places = apps.size();
-        apps.addAll(Apps.launchable(activity));
+        apps.addAll(Apps.all(activity));
         java.util.Collections.sort(apps.subList(places, apps.size()), (x, y) -> x[1].compareToIgnoreCase(y[1]));
         java.util.Map<Integer, Buttons.Button> all = Buttons.all(activity);
         for (java.util.Map.Entry<Integer, Buttons.Button> e : all.entrySet()) {

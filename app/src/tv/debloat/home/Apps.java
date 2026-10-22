@@ -43,11 +43,11 @@ final class Apps {
         boolean connected = true;
     }
 
-    static Item app(String pkg, String label) {
-        return app(pkg, label, null);
+    static Item item(String pkg, String label) {
+        return item(pkg, label, null);
     }
 
-    static Item app(String pkg, String label, String uri) {
+    static Item item(String pkg, String label, String uri) {
         Item it = new Item();
         it.kind = APP;
         it.key = pkg;
@@ -67,7 +67,7 @@ final class Apps {
     }
 
     /** Every app with a TV (or, for apps you installed, a phone) launcher entry: {package, name}. */
-    static List<String[]> launchable(Context c) {
+    static List<String[]> all(Context c) {
         PackageManager pm = c.getPackageManager();
         List<String[]> out = new ArrayList<>();
         Set<String> seen = new HashSet<>();

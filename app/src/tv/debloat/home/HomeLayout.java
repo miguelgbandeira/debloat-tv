@@ -153,7 +153,7 @@ final class HomeLayout {
         add(NEW, "", false);
         add(FOR_YOU, "", false);
         add(TRENDING, "", false);
-        java.util.List<String[]> all = Apps.launchable(context);
+        java.util.List<String[]> all = Apps.all(context);
         java.util.Collections.sort(all, (x, y) -> x[1].compareToIgnoreCase(y[1]));
         Row video = add(APPS, "Video", false), music = add(APPS, "Music", false), other = add(APPS, "Apps", false);
         other.apps.add(ALL_APPS_TILE);   // first in Apps
