@@ -2,7 +2,7 @@
 # Tests install.sh against a fake adb (no TV needed): the Wi-Fi safety check, settings with spaces and empty values,
 # and undo refusing to report success when Home didn't go back.   bash tests/installer_test.sh
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 fails=0
 pass() { printf '  ok    %s\n' "$1"; }
