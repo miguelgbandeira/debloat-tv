@@ -217,9 +217,8 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         addView(scroll, indexOfChild(bar), match());
 
         appsGrid = new AppsGrid(a);
-        // Debloat TV's own tile in All Apps opens its settings (you're already on its home screen).
-        appsGrid.setActions((pkg, label, tile) -> { if (isSelf(pkg)) openSettings(); else open(Apps.item(pkg, label), tile); },
-                (pkg, label, tile) -> { if (isSelf(pkg)) openSettings(); else openSheet(b -> menus.gridAppPage(b, pkg, label)); },
+        appsGrid.setActions((pkg, label, tile) -> open(Apps.item(pkg, label), tile),
+                (pkg, label, tile) -> openSheet(b -> menus.gridAppPage(b, pkg, label)),
                 this::appsClosed);
         addView(appsGrid, match());
 
@@ -1014,7 +1013,6 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
             if (layout.hiddenApps().contains(app[0])) continue;
             apps.add(app);
         }
-        apps.add(new String[] {activity.getPackageName(), "Debloat TV"});
         java.util.Collections.sort(apps, (x, y) -> x[1].compareToIgnoreCase(y[1]));
         appsGrid.show(apps, select);
     }
@@ -1344,10 +1342,6 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
     }
 
     /** The Settings menu (or closes it when it's already open). */
-    boolean isSelf(String pkg) {
-        return activity.getPackageName().equals(pkg);
-    }
-
     void openSettings() {
         if (appsGrid.isOpen()) appsGrid.close();
         if (sheet.isOpen()) sheet.close();
