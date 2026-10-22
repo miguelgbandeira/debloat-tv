@@ -41,7 +41,10 @@ final class SettingsPages {
         b.toggle("Animations", animationsOn(), this::setAnimations);
         b.header("Your stuff");
         b.item("Streaming apps", Store.tmdbKey(home.activity).isEmpty() ? "Off" : "On", true, () -> home.sheet.push(this::tmdbPage));
-        b.item("Stremio", stremio ? "Signed in" : "Sign in", true, () -> home.sheet.push(this::stremioPage));
+        // Only with the Stremio app on the TV (or still signed in, so you can sign out after removing it).
+        if (stremio || Apps.installed(home.activity, Stremio.PKG)) {
+            b.item("Stremio", stremio ? "Signed in" : "Sign in", true, () -> home.sheet.push(this::stremioPage));
+        }
         b.item("Trakt", trakt ? "Signed in" : Trakt.configured() ? "Sign in" : "Off", true, () -> home.sheet.push(this::traktPage));
         b.header("TV");
         String city = Store.get(home.activity, Store.CITY, "");
