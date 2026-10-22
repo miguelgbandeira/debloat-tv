@@ -295,6 +295,20 @@ final class Sheet extends FrameLayout {
             return this;
         }
 
+        /** A picture loaded from the web (a QR code to scan with your phone). */
+        Builder image(String url, int size) {
+            android.widget.ImageView v = new android.widget.ImageView(activity);
+            v.setBackgroundColor(Color.WHITE);
+            v.setPadding(px(12), px(12), px(12), px(12));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(px(size), px(size));
+            lp.leftMargin = px(26);
+            lp.topMargin = px(10);
+            lp.bottomMargin = px(16);
+            list.addView(v, lp);
+            Thumbs.get(activity).into(v, url, px(size));
+            return this;
+        }
+
         /** An entry: its name, a value on the right (or null) and, when it opens another page, an arrow. */
         Builder item(String label, String value, boolean opens, Runnable action) {
             list.addView(entry(label, value, opens, action, false));

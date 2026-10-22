@@ -238,6 +238,138 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         main.post(refresh);
         rebuildIfChanged();
         updateWeather();
+        if (!"1".equals(Store.get(activity, "setup_done", ""))) main.postDelayed(this::setupNext, 400);
+    }
+
+    // MARK: - First-run setup: what you watch with, then only the questions that apply
+
+    private int setupStep;   // 0 where, 1 TMDB, 2 Stremio, 3 Trakt, 4 weather, 5 done
+
+    /** The next setup page that applies (steps already answered, or sent by the installer, are skipped). */
+    private void setupNext() {
+        if (sheet.isOpen() || "1".equals(Store.get(activity, "setup_done", ""))) return;
+        boolean stremioApp = Apps.installed(activity, Stremio.PKG);
+        boolean streaming = !foundStreamingApps().isEmpty();
+        while (true) {
+            switch (setupStep) {
+                case 0:
+                    if (stremioApp || streaming) { openSheet(this::setupWherePage); return; }
+                    break;
+                case 1:
+                    if (useStreaming() && Store.tmdbKey(activity).isEmpty()) { openSheet(this::setupTmdbPage); return; }
+                    break;
+                case 2:
+                    if (useStremio() && !Stremio.signedIn(activity)) { openSheet(this::setupStremioPage); return; }
+                    break;
+                case 3:
+                    if (!recs.traktMode() && !"0".equals(Store.get(activity, "use_trakt", ""))) { openSheet(this::setupTraktPage); return; }
+                    break;
+                case 4:
+                    if (Store.get(activity, Store.CITY, "").isEmpty()) { openSheet(this::setupWeatherPage); return; }
+                    break;
+                default:
+                    Store.put(activity, "setup_done", "1");
+                    recs.refreshNow();
+                    build();
+                    return;
+            }
+            setupStep++;
+        }
+    }
+
+    private boolean setupHandled;   // the page closed by a choice (not by Back)
+
+    private void setupDone(int step) {
+        setupStep = step + 1;
+        setupHandled = true;
+        sheet.close();   // its close handler shows the next page
+    }
+
+    private boolean useStremio() {
+        return Apps.installed(activity, Stremio.PKG) && !"0".equals(Store.get(activity, "use_stremio", ""));
+    }
+
+    private boolean useStreaming() {
+        return !foundStreamingApps().isEmpty() && !"0".equals(Store.get(activity, "use_streaming", ""));
+    }
+
+    /** The streaming apps on this TV that TMDB knows, by name. */
+    private List<String> foundStreamingApps() {
+        String[][] known = {{"com.netflix.ninja", "Netflix"}, {"com.amazon.amazonvideo.livingroom", "Prime Video"},
+                {"com.disney.disneyplus", "Disney+"}, {"com.wbd.stream", "Max"}, {"com.hbo.hbonow", "Max"},
+                {"com.apple.atve.androidtv.appletv", "Apple TV"}, {"com.hulu.livingroomplus", "Hulu"},
+                {"com.cbs.ott", "Paramount+"}, {"com.peacocktv.peacockandroid", "Peacock"},
+                {"com.skyshowtime.skyshowtime.google", "SkyShowtime"}, {"com.crunchyroll.crunchyroid", "Crunchyroll"},
+                {"pt.rtp.play", "RTP Play"}};
+        List<String> out = new ArrayList<>();
+        for (String[] k : known) if (Apps.installed(activity, k[0]) && !out.contains(k[1])) out.add(k[1]);
+        return out;
+    }
+
+    private void setupWherePage(Sheet.Builder b) {
+        b.icon(symbol("tv"), true).title("Welcome to Debloat TV").subtitle("A few questions, then your home screen is ready.");
+        b.heading("What do you watch with?");
+        if (Apps.installed(activity, Stremio.PKG)) {
+            b.row("where:stremio", "Stremio", useStremio() ? "\u2713" : null, !useStremio(), () -> {
+                Store.put(activity, "use_stremio", useStremio() ? "0" : "1");
+                sheet.refresh("where:stremio");
+            }, null, null);
+        }
+        List<String> found = foundStreamingApps();
+        if (!found.isEmpty()) {
+            String names = found.size() <= 3 ? String.join(", ", found) : String.join(", ", found.subList(0, 3)) + "\u2026";
+            b.row("where:streaming", "Streaming apps", useStreaming() ? names + "  \u2713" : names, !useStreaming(), () -> {
+                Store.put(activity, "use_streaming", useStreaming() ? "0" : "1");
+                sheet.refresh("where:streaming");
+            }, null, null);
+        }
+        b.item("Continue", null, true, () -> setupDone(0));
+        b.hint("OK ticks or unticks. You can change all of this later in Settings \u2192 Home settings.");
+    }
+
+    private void setupTmdbPage(Sheet.Builder b) {
+        b.icon(symbol("sparkles"), true).title("Streaming apps").subtitle("Popular and new titles on your apps, in your country.");
+        b.heading("Add a free TMDB key");
+        b.note("Scan this with your phone, sign up at The Movie Database (free), and copy your API key:");
+        b.image("https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data="
+                + android.net.Uri.encode("https://www.themoviedb.org/settings/api"), 220);
+        b.input("TMDB API key", "", "Save", key -> { Store.put(activity, Store.TMDB_KEY, key); setupDone(1); });
+        b.item("Skip", null, false, () -> { Store.put(activity, "use_streaming", "0"); setupDone(1); });
+        b.hint("themoviedb.org/settings/api \u00b7 This product uses the TMDB API but is not endorsed or certified by TMDB.");
+    }
+
+    private void setupStremioPage(Sheet.Builder b) {
+        b.icon(symbol("play"), true).title("Stremio").subtitle("Continue watching and your Library, from your Stremio account.");
+        b.heading("Sign in to Stremio");
+        b.item("Sign in with your phone", null, true, () -> {
+            setupHandled = true;
+            sheet.close();
+            activity.startActivity(new Intent(activity, StremioLoginActivity.class));   // setup goes on when it's done
+        });
+        b.item("Skip", null, false, () -> { Store.put(activity, "use_stremio", "0"); setupDone(2); });
+    }
+
+    private void setupTraktPage(Sheet.Builder b) {
+        b.icon(symbol("sparkles"), true).title("Trakt (optional)").subtitle("Recommendations from your Trakt history.");
+        b.heading("Use Trakt?");
+        if (Trakt.configured()) {
+            b.item("Sign in with your phone", null, true, () -> {
+                setupHandled = true;
+                sheet.close();
+                activity.startActivity(new Intent(activity, TraktLoginActivity.class));
+            });
+        } else {
+            b.note("Trakt needs your own free Trakt app: trakt.tv/oauth/applications \u2192 New application, redirect URI http://localhost. Type its Client ID:");
+            b.input("Trakt Client ID", "", "Save", id -> { Store.put(activity, Store.TRAKT_ID, id); sheet.refresh(); });
+        }
+        b.item("Not now", null, false, () -> { Store.put(activity, "use_trakt", "0"); setupDone(3); });
+    }
+
+    private void setupWeatherPage(Sheet.Builder b) {
+        b.icon(symbol("location"), true).title("Weather").subtitle("The temperature at the top of the screen.");
+        b.heading("Your city");
+        b.input("Type a city", "", "Search", name -> sheet.push(r -> cityResults(r, name)));
+        b.item("Skip", null, false, () -> { Store.put(activity, Store.CITY, ""); setupDone(4); });
     }
 
     void pause() {
@@ -739,6 +871,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
 
     /** For a title row with nothing yet: sign in (Stremio, Trakt), or nothing (still loading). */
     private View signInCard(String type) {
+        if (type != null) return null;   // signing in is part of setup and Home settings, not a card in the rows
         boolean stremio = type.equals(HomeLayout.CONTINUE) || type.equals(HomeLayout.LIBRARY);
         if (stremio ? Stremio.signedIn(activity) : (!Trakt.configured() || recs.traktMode())) return null;
         int index = layout.rows().indexOf(rowOfType(type));
@@ -1363,6 +1496,11 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
     private int pendingFocusRow = -1;   // after moving a row: the row to land on when the sheet closes
 
     private void sheetClosed() {
+        if (!"1".equals(Store.get(activity, "setup_done", ""))) {
+            if (!setupHandled) setupStep++;   // Back on a setup page skips that question
+            setupHandled = false;
+            main.postDelayed(this::setupNext, 200);
+        }
         if (appsGrid.isOpen()) {
             // Back to All Apps (an app may have been hidden or added to a row).
             appsGrid.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
@@ -1640,6 +1778,10 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
                             Store.put(activity, Store.LONGITUDE, place[2]);
                             Weather.reset();
                             Weather.refresh(activity);
+                            if (!"1".equals(Store.get(activity, "setup_done", ""))) {
+                                setupDone(4);
+                                return;
+                            }
                             sheet.back();
                             sheet.back();
                         });
