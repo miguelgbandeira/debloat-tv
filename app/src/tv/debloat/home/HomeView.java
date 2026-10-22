@@ -1513,15 +1513,21 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         b.title(label).subtitle(inRow ? T.f("In “{row}”", "row", r.title()) : r.title());
         if (!tile) {
             int fav = layout.favorites();
-            if (fav >= 0 && fav != row && !layout.rows().get(fav).apps.contains(pkg)) {
-                b.item(T.f("Add to {row}", "row", layout.rows().get(fav).title()), null, false,
-                        () -> { layout.moveAppTo(pkg, -1, fav); sheet.close(); });
+            if (fav >= 0) {
+                String favName = layout.rows().get(fav).title();
+                if (layout.rows().get(fav).apps.contains(pkg)) {
+                    b.item(T.f("Remove from {row}", "row", favName), null, false, () -> { layout.removeApp(fav, pkg); sheet.close(); });
+                } else {
+                    b.item(T.f("Add to {row}", "row", favName), null, false, () -> { layout.moveAppTo(pkg, -1, fav); sheet.close(); });
+                }
             }
         }
         if (inRow) b.item("Move", "◀ ▶", false, () -> { startMoveAfterSheet = true; sheet.close(); });
         b.item("Move to another row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, inRow ? row : -1)));
         if (inRow && !tile) b.item("Also add to another row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, -1)));
-        if (inRow) b.item("Remove from this row", null, false, () -> { layout.removeApp(row, pkg); sheet.close(); });
+        if (inRow && (tile || row != layout.favorites())) {
+            b.item("Remove from this row", null, false, () -> { layout.removeApp(row, pkg); sheet.close(); });
+        }
         if (!tile) {
             b.item("Hide app", null, false, () -> { layout.hideApp(pkg); sheet.close(); });
             appSystemItems(b, pkg);
@@ -1570,9 +1576,13 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
     private void gridAppPage(Sheet.Builder b, String pkg, String label) {
         b.icon(Apps.card(activity, pkg), false).title(label).subtitle("All Apps");
         int fav = layout.favorites();
-        if (fav >= 0 && !layout.rows().get(fav).apps.contains(pkg)) {
-            b.item(T.f("Add to {row}", "row", layout.rows().get(fav).title()), null, false,
-                    () -> { layout.moveAppTo(pkg, -1, fav); sheet.close(); });
+        if (fav >= 0) {
+            String favName = layout.rows().get(fav).title();
+            if (layout.rows().get(fav).apps.contains(pkg)) {
+                b.item(T.f("Remove from {row}", "row", favName), null, false, () -> { layout.removeApp(fav, pkg); sheet.close(); });
+            } else {
+                b.item(T.f("Add to {row}", "row", favName), null, false, () -> { layout.moveAppTo(pkg, -1, fav); sheet.close(); });
+            }
         }
         b.item("Add to a row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, -1)));
         b.item("Hide app", null, false, () -> { layout.hideApp(pkg); gridChanged = true; sheet.close(); });
