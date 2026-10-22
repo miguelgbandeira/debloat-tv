@@ -59,6 +59,21 @@ It asks only what it needs, sets everything up and installs it ([CLAUDE.md](CLAU
 **Undo:** `./install.sh 192.168.1.50 --undo`, or on the TV: Settings → Home settings → *Home button opens* → the TV's
 own home screen.
 
+### Just debloat (keep Google TV)
+
+Happy with your TV's own home screen? Skip the app and only turn off the junk: TCL's ad, promo, tracking and
+store-demo apps, and Google's feedback and auto-install services ([the full list](debloat-list.txt), with what each
+one is).
+
+```bash
+./debloat.sh 192.168.1.50          # turn off the junk
+./debloat.sh 192.168.1.50 --dns    # …and block ads in every app with AdGuard DNS
+./debloat.sh 192.168.1.50 --undo   # turn back on everything it turned off, and put DNS back
+```
+
+Nothing is uninstalled. It never turns off an app that saved a Wi-Fi network, and it skips anything that isn't on your
+TV. With Claude Code: *"Just debloat my TV at 192.168.1.50, keep the Google TV home screen."*
+
 ## Good to know
 
 - **Keep USB debugging on.** Debloat TV uses it, from the TV itself, for two things: turning remote buttons back on

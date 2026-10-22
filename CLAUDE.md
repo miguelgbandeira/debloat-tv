@@ -23,6 +23,11 @@ install it ("Install Debloat TV on my TV at 192.168.1.50"), do this:
    right) → Home settings → Stremio / Trakt.
 7. Tell them how to undo: `./install.sh <IP> --undo` gives Home back to the TV's own home screen.
 
+**Just debloat** (they want to keep the TV's own home screen, or say "only debloat"): skip steps 3-6 and run
+`./debloat.sh <IP>[:port]`, adding `--dns` if they want ads blocked in every app (AdGuard DNS). It only turns off what's
+in `debloat-list.txt`; undo is `./debloat.sh <IP> --undo`. Ask before adding anything personal to it (Netflix, YouTube
+Music, screen mirroring): those are choices, not bloat.
+
 Safety: the installer refuses to turn off the TV's setup app when it saved a Wi-Fi network (Android would delete
 that network). If it stops there, the person forgets and re-adds the network on the TV, then you run it again.
 Never use `pm uninstall` on system apps; Debloat TV only turns them off (`pm disable-user`), which undo reverses.

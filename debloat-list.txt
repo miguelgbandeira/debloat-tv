@@ -1,0 +1,29 @@
+# Apps debloat.sh turns off (pm disable-user: they stay installed, and ./debloat.sh <IP> --undo turns them back on).
+# Only junk nobody needs: ads, promos, tracking and store-demo apps. Apps that aren't on the TV are skipped.
+# One package per line; what it is after the #.
+
+# TCL
+com.tcl.channelplus             # TCL Channel: ad-supported channels and promo rows (turns itself back on at boot)
+com.tcl.tv.tclhome_passive      # TCL home leftovers running in the background
+com.tcl.partnercustomizer       # TCL's promo rows on the Google TV home screen
+com.tcl.waterfall.overseas      # TCL promo content
+com.tcl.interactive             # TCL interactive TV ads (TIAS)
+com.tcl.messagebox              # TCL promo messages and notifications
+com.tcl.usercenter              # TCL account
+com.tcl.magiconnectfree         # TCL phone app link
+com.tcl.exhibit                 # Store demo mode
+com.tcl.esticker                # Store demo stickers
+com.tcl.logkit                  # TCL logging
+com.tcl.ocean.instructions      # On-screen manual
+com.tcl.repairguide             # Repair guide
+com.tcl.smartalexa              # TCL's Alexa app
+com.tcl.gamebar                 # Game bar overlay
+com.tcl.eva                     # TCL Eva
+
+# Google / Android
+android.autoinstalls.config.google.gtvpai   # Installs partner apps you didn't ask for
+com.google.android.feedback                 # Sends feedback reports to Google
+com.android.tv.feedbackconsent              # Feedback consent prompts
+com.google.android.play.games               # Play Games
+com.android.printspooler                    # Printing (a TV doesn't print)
+com.android.healthconnect.controller        # Health Connect

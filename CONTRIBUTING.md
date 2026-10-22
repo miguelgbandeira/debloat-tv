@@ -13,7 +13,7 @@ adb logcat -s DebloatTV            # its logs
 ## Before a pull request
 
 ```bash
-shellcheck -S warning install.sh build.sh tests/installer_test.sh
+shellcheck -S warning install.sh debloat.sh build.sh tests/installer_test.sh
 bash tests/installer_test.sh       # the installer against a fake adb: no TV needed
 ./build.sh
 ```
@@ -33,6 +33,7 @@ GitHub runs the same checks on every push.
 | `Buttons.java`, `KeyService.java` | Remote buttons |
 | `Adb.java`, `TvControl.java` | The TV's own adb: remote buttons after a restart, the Home switch |
 | `install.sh` | Install, settings, undo |
+| `debloat.sh`, `debloat-list.txt` | Just debloat: turn off the junk, keep the TV's own home screen |
 
 ## Ground rules
 
