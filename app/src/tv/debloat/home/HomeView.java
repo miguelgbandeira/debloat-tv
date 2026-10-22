@@ -1515,7 +1515,15 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         b.item("Move to another row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, inRow ? row : -1)));
         if (inRow && !tile) b.item("Also add to another row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, -1)));
         if (inRow) b.item("Remove from this row", null, false, () -> { layout.removeApp(row, pkg); sheet.close(); });
-        if (!tile) appSystemItems(b, pkg);
+        if (!tile) {
+            int fav = layout.favorites();
+            if (fav >= 0 && fav != row && !layout.rows().get(fav).apps.contains(pkg)) {
+                b.item(T.f("Add to {row}", "row", layout.rows().get(fav).title()), null, false,
+                        () -> { layout.moveAppTo(pkg, -1, fav); sheet.close(); });
+            }
+            b.item("Hide app", null, false, () -> { layout.hideApp(pkg); sheet.close(); });
+            appSystemItems(b, pkg);
+        }
     }
 
     /** The app's own Android pages: App settings (storage, permissions, force stop) and Uninstall. */
