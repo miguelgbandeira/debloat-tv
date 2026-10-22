@@ -1026,6 +1026,10 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         if (again == null && back != null && back.isAttachedToWindow()) again = back;
         if (again != null) again.requestFocus();
         else focusFirst();
+        if (settingsAfterApps) {
+            settingsAfterApps = false;
+            openSheet(pages::settingsPage);
+        }
     }
 
     // MARK: - Moving a row (OK on ⇅ lifts it; Up/Down glides it past its neighbours; OK or Back puts it down)
@@ -1341,9 +1345,15 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         }
     }
 
+    boolean settingsAfterApps;   // Settings asked for over All Apps: opens once the grid has finished closing
+
     /** The Settings menu (or closes it when it's already open). */
     void openSettings() {
-        if (appsGrid.isOpen()) appsGrid.close();
+        if (appsGrid.isOpen() && !sheet.isOpen()) {
+            settingsAfterApps = true;
+            appsGrid.close();
+            return;
+        }
         if (sheet.isOpen()) sheet.close();
         else openSheet(pages::settingsPage);
     }

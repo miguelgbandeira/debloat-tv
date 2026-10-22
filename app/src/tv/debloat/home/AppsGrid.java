@@ -86,6 +86,7 @@ final class AppsGrid extends FrameLayout {
 
     /** Shows the grid with these apps ({package, name}, in order); the selection stays on `select` if it's there. */
     void show(List<String[]> apps, String select) {
+        setDescendantFocusability(FOCUS_AFTER_DESCENDANTS);   // a menu over the grid may have left it blocked
         grid.removeAllViews();
         LinearLayout line = null;
         View target = null;
