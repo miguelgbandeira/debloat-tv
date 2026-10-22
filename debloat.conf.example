@@ -1,0 +1,29 @@
+# Debloat TV settings, sent to the TV by:  ./install.sh <TV-IP> --config debloat.conf
+# Leave a line empty (or delete it) to skip it. With setup_done=1 the TV doesn't ask its first-run questions.
+
+# Where you watch: 1 = yes, 0 = no
+use_stremio=1
+use_streaming=1
+
+# Streaming apps rows (Popular / New on your apps): a free key from https://www.themoviedb.org/settings/api
+tmdb_key=
+
+# Your country, two letters (which titles are on which app). Empty = the TV's country.
+region=
+
+# Weather: the city's name and position (decimal degrees)
+city=
+latitude=
+longitude=
+
+# Celsius or Fahrenheit: C, F, or empty for your country's usual one
+units=
+
+# Optional Trakt recommendations: your own Trakt app's Client ID (trakt.tv/oauth/applications, redirect
+# http://localhost). You still sign in on the TV, once.
+trakt_client_id=
+
+# The app the Live TV button opens (its package name), e.g. se.hedekonsult.sparkle for Sparkle TV
+live_tv_app=
+
+setup_done=1
