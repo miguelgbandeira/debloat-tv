@@ -1511,16 +1511,18 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         if (tile) b.icon(symbol("apps"), true);
         else b.icon(Apps.card(activity, pkg), false);
         b.title(label).subtitle(inRow ? T.f("In “{row}”", "row", r.title()) : r.title());
-        if (inRow) b.item("Move", "◀ ▶", false, () -> { startMoveAfterSheet = true; sheet.close(); });
-        b.item("Move to another row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, inRow ? row : -1)));
-        if (inRow && !tile) b.item("Also add to another row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, -1)));
-        if (inRow) b.item("Remove from this row", null, false, () -> { layout.removeApp(row, pkg); sheet.close(); });
         if (!tile) {
             int fav = layout.favorites();
             if (fav >= 0 && fav != row && !layout.rows().get(fav).apps.contains(pkg)) {
                 b.item(T.f("Add to {row}", "row", layout.rows().get(fav).title()), null, false,
                         () -> { layout.moveAppTo(pkg, -1, fav); sheet.close(); });
             }
+        }
+        if (inRow) b.item("Move", "◀ ▶", false, () -> { startMoveAfterSheet = true; sheet.close(); });
+        b.item("Move to another row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, inRow ? row : -1)));
+        if (inRow && !tile) b.item("Also add to another row", null, true, () -> sheet.push(m -> moveAppPage(m, pkg, label, -1)));
+        if (inRow) b.item("Remove from this row", null, false, () -> { layout.removeApp(row, pkg); sheet.close(); });
+        if (!tile) {
             b.item("Hide app", null, false, () -> { layout.hideApp(pkg); sheet.close(); });
             appSystemItems(b, pkg);
         }
