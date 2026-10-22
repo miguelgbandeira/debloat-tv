@@ -106,14 +106,14 @@ final class HomeLayout {
             }
         }
         if (dropped) save();
-        // The All Apps tile is an ordinary entry of an app row, at the end of the last one (Tools) to start with.
-        if (!prefs.getBoolean("allAppsTileTools", false)) {
-            prefs.edit().putBoolean("allAppsTileTools", true).apply();
-            int last = lastAppRow();
-            if (last >= 0) {
-                for (Row r : rows) r.apps.remove(ALL_APPS_TILE);   // it started in Favorites
-                rows.get(last).apps.add(ALL_APPS_TILE);
-                save();
+        // Early builds put the All Apps tile at the end of the last app row: it belongs first in Apps (once).
+        if (!prefs.getBoolean("allAppsFirst", false)) {
+            prefs.edit().putBoolean("allAppsFirst", true).apply();
+            for (Row r : rows) {
+                if (r.isApps() && "Apps".equals(r.name) && r.apps.remove(ALL_APPS_TILE)) {
+                    r.apps.add(0, ALL_APPS_TILE);
+                    save();
+                }
             }
         }
     }

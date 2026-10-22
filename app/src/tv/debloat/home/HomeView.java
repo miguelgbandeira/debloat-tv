@@ -238,7 +238,12 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         main.post(refresh);
         rebuildIfChanged();
         updateWeather();
-        if (!"1".equals(Store.get(activity, "setup_done", ""))) main.postDelayed(this::setupNext, 400);
+        if (!"1".equals(Store.get(activity, "setup_done", "")) || signInPending()) main.postDelayed(this::setupNext, 400);
+    }
+
+    /** Stremio is used but not signed in, and its sign-in hasn't been offered on this TV yet. */
+    private boolean signInPending() {
+        return useStremio() && !Stremio.signedIn(activity) && !"1".equals(Store.get(activity, "stremio_asked", ""));
     }
 
     // MARK: - First-run setup: what you watch with, then only the questions that apply
@@ -247,7 +252,10 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
 
     /** The next setup page that applies (steps already answered, or sent by the installer, are skipped). */
     private void setupNext() {
-        if (sheet.isOpen() || "1".equals(Store.get(activity, "setup_done", ""))) return;
+        if (sheet.isOpen()) return;
+        boolean answered = "1".equals(Store.get(activity, "setup_done", ""));   // answered on the computer
+        if (answered && !signInPending()) return;
+        if (answered && setupStep < 2) setupStep = 2;   // only the sign-in is left
         boolean stremioApp = Apps.installed(activity, Stremio.PKG);
         boolean streaming = !foundStreamingApps().isEmpty();
         while (true) {
@@ -259,9 +267,13 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
                     if (useStreaming() && Store.tmdbKey(activity).isEmpty()) { openSheet(this::setupTmdbPage); return; }
                     break;
                 case 2:
-                    if (useStremio() && !Stremio.signedIn(activity)) { openSheet(this::setupStremioPage); return; }
+                    if (useStremio() && !Stremio.signedIn(activity) && !"1".equals(Store.get(activity, "stremio_asked", ""))) {
+                        openSheet(this::setupStremioPage);
+                        return;
+                    }
                     break;
                 case 3:
+                    if (answered) { setupStep = 5; continue; }
                     if (!recs.traktMode() && !"0".equals(Store.get(activity, "use_trakt", ""))) { openSheet(this::setupTraktPage); return; }
                     break;
                 case 4:
@@ -343,10 +355,11 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         b.heading("Sign in to Stremio");
         b.item("Sign in with your phone", null, true, () -> {
             setupHandled = true;
+            Store.put(activity, "stremio_asked", "1");
             sheet.close();
             activity.startActivity(new Intent(activity, StremioLoginActivity.class));   // setup goes on when it's done
         });
-        b.item("Skip", null, false, () -> { Store.put(activity, "use_stremio", "0"); setupDone(2); });
+        b.item("Later", null, false, () -> { Store.put(activity, "stremio_asked", "1"); setupDone(2); });
     }
 
     private void setupTraktPage(Sheet.Builder b) {
@@ -535,9 +548,11 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
                 for (Picks.Pick p : recs.group(Trakt.GROUP_TRENDING)) out.add(fromPick(p));
                 return out;
             case HomeLayout.POPULAR:
+                if (!useStreaming()) return out;
                 for (Picks.Pick p : recs.group(Picks.POPULAR)) out.add(fromPick(p));
                 return out;
             case HomeLayout.NEW:
+                if (!useStreaming()) return out;
                 for (Picks.Pick p : recs.group(Picks.NEW)) out.add(fromPick(p));
                 return out;
             default:
