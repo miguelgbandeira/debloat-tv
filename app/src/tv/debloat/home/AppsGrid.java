@@ -184,7 +184,7 @@ final class AppsGrid extends FrameLayout {
         cell.setLayoutParams(lp);
 
         cell.setOnFocusChangeListener((v, has) -> {
-            card.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).translationZ(has ? px(18) : 0).setDuration(140).start();
+            card.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(140).start();   // no shadow: costly for a TV
             sheen.animate().alpha(has ? 1f : 0f).setDuration(140).start();
             name.setTextColor(has ? Color.WHITE : 0x99FFFFFF);
             name.animate().translationY(has ? px(8) : 0).setDuration(140).start();

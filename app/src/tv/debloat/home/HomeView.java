@@ -75,6 +75,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
     final List<View> rowViews = new ArrayList<>();
     final List<Integer> rowIndex = new ArrayList<>();   // each shown row's position in the layout
     String shownBackdrop = "", signature = "";
+    final Backdrops backdrops;
     Title heroTitleNow;
     volatile boolean fetchingStremio;
 
@@ -98,13 +99,14 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         super(a);
         activity = a;
         u = a.getResources().getDisplayMetrics().widthPixels / 1920f;
+        backdrops = new Backdrops(a.getResources().getDisplayMetrics().widthPixels, a.getResources().getDisplayMetrics().heightPixels, u);
         recs = Picks.get(a);
         thumbs = Thumbs.get(a);
         layout = new HomeLayout(a);
         firstRun = new FirstRun(this);
         menus = new Menus(this);
         pages = new SettingsPages(this);
-        setBackgroundColor(Color.rgb(10, 10, 14));
+        // The dark background is the window's own (styles.xml): one full-screen fill fewer on every frame.
 
         backdrop = image();
         backdropNext = image();
@@ -115,19 +117,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         posterNext.setAlpha(0f);
         addView(posterNext, match());
 
-        View scrimLeft = new View(a);
-        scrimLeft.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[] {0xF0000000, 0xA0000000, 0x00000000}));
-        addView(scrimLeft, new LayoutParams(px(1300), ViewGroup.LayoutParams.MATCH_PARENT));
-        View scrimBottom = new View(a);
-        scrimBottom.setBackground(new GradientDrawable(GradientDrawable.Orientation.BOTTOM_TOP,
-                new int[] {0xFF0A0A0E, 0xE00A0A0E, 0x000A0A0E}));
-        LayoutParams sb = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(640));
-        sb.gravity = Gravity.BOTTOM;
-        addView(scrimBottom, sb);
-        View scrimTop = new View(a);
-        scrimTop.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[] {0x99000000, 0x00000000}));
-        addView(scrimTop, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(220)));
+        // The dark shading behind the title and the rows is painted into these pictures (Backdrops), not drawn as layers.
 
         // The selected title: logo (or name), details and description, top left.
         heroText = new LinearLayout(a);
@@ -551,7 +541,8 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         lp.rightMargin = px(28);
         card.setLayoutParams(lp);
         card.setOnFocusChangeListener((v, has) -> {
-            v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).translationZ(has ? px(16) : 0).setDuration(140).start();
+            // No shadow (translationZ): barely visible on the dark background, and costly for a TV's graphics chip.
+            v.animate().scaleX(has ? 1.08f : 1f).scaleY(has ? 1.08f : 1f).setDuration(140).start();
             v.setForeground(has ? ring : null);
             if (has) onCardFocused(v);
         });
@@ -935,7 +926,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         heroLogo.setVisibility(GONE);
         heroTitle.setVisibility(VISIBLE);
         if (t.logo != null && !t.logo.isEmpty()) {
-            thumbs.load(t.logo, px(640), b -> {
+            thumbs.load(t.logo, px(640), true, b -> {
                 if (heroTitleNow != t) return;
                 heroLogo.setImageBitmap(b);
                 heroLogo.setVisibility(VISIBLE);
@@ -970,7 +961,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         }
         shownBackdrop = t.backdrop;
         String wanted = t.backdrop;
-        thumbs.load(t.backdrop, px(1280), b -> {
+        thumbs.load(t.backdrop, px(1280), false, raw -> backdrops.poster(t.backdrop, raw, b -> {
             if (!wanted.equals(shownBackdrop)) return;
             View f = findFocus();
             if (f == null || f.getTag(TAG_TITLE) != t) return;   // moved on meanwhile
@@ -985,7 +976,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
                 backdropNext.setImageBitmap(b);
                 posterNext.setAlpha(0f);
             }).start();
-        });
+        }));
     }
 
     // MARK: - Settings pages (Sheet)

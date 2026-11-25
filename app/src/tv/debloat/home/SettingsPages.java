@@ -347,11 +347,9 @@ final class SettingsPages {
             if (!b[0].equals(key) || b.length < 3) continue;
             int[] colors = new int[b.length - 2];
             for (int i = 2; i < b.length; i++) colors[i - 2] = Color.parseColor(b[i]);
-            if (colors.length == 1) {
-                home.backdrop.setImageDrawable(new android.graphics.drawable.ColorDrawable(colors[0]));
-            } else {
-                home.backdrop.setImageDrawable(new GradientDrawable(GradientDrawable.Orientation.TL_BR, colors));
-            }
+            android.graphics.drawable.Drawable base = colors.length == 1 ? new android.graphics.drawable.ColorDrawable(colors[0])
+                    : new GradientDrawable(GradientDrawable.Orientation.TL_BR, colors);
+            home.backdrop.setImageBitmap(home.backdrops.background(base));   // with the shading painted in
             return;
         }
     }

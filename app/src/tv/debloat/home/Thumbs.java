@@ -49,20 +49,23 @@ final class Thumbs {
     /** Shows the image in the view (once loaded); a view reused for another image meanwhile is left alone. */
     void into(ImageView view, String url, int width) {
         view.setTag(url);
-        Bitmap ready = memory.get(key(url, width));
+        Bitmap ready = memory.get(key(url, width, true));
         if (ready != null) {
             view.setImageBitmap(ready);
             return;
         }
         view.setImageDrawable(null);
-        load(url, width, b -> {
+        load(url, width, true, b -> {
             if (url.equals(view.getTag())) view.setImageBitmap(b);
         });
     }
 
-    /** Loads the image decoded to about `width` pixels wide and calls back on the main thread (not on failure). */
-    void load(String url, int width, Done done) {
-        String key = key(url, width);
+    /**
+     * Loads the image decoded to about `width` pixels wide and calls back on the main thread (not on failure).
+     * shownOnly: it's only displayed (see Images.decodeToWidth); false when the caller paints it into a picture.
+     */
+    void load(String url, int width, boolean shownOnly, Done done) {
+        String key = key(url, width, shownOnly);
         Bitmap ready = memory.get(key);
         if (ready != null) {
             done.on(ready);
@@ -72,7 +75,7 @@ final class Thumbs {
             try {
                 File f = new File(dir, Integer.toHexString(url.hashCode()) + ".img");
                 if (!f.exists()) download(url, f);
-                Bitmap b = Images.decodeToWidth(f, width);
+                Bitmap b = Images.decodeToWidth(f, width, shownOnly);
                 if (b == null) {
                     //noinspection ResultOfMethodCallIgnored
                     f.delete();
@@ -87,8 +90,8 @@ final class Thumbs {
         });
     }
 
-    private static String key(String url, int width) {
-        return width + "|" + url;
+    private static String key(String url, int width, boolean shownOnly) {
+        return (shownOnly ? "h" : "s") + width + "|" + url;
     }
 
     private void download(String url, File f) throws IOException {
