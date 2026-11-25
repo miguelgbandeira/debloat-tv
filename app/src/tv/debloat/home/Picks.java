@@ -195,29 +195,30 @@ final class Picks {
         List<Pick> out = new ArrayList<>();
         if (mine.isEmpty()) return out;
         String recent = day(-75), today = day(0);
-        List<List<Pick>> popular = new ArrayList<>(), fresh = new ArrayList<>();
+        // Per kind, one title from each app in turn; then series and movies alternate along the row.
+        List<List<Pick>> popTv = new ArrayList<>(), popMovie = new ArrayList<>(), newTv = new ArrayList<>(), newMovie = new ArrayList<>();
         for (Map.Entry<Integer, String[]> s : mine.entrySet()) {
             String base = "&watch_region=" + region + "&with_watch_providers=" + s.getKey()
                     + "&with_watch_monetization_types=flatrate&include_adult=false";
-            List<Pick> pop = new ArrayList<>(), neu = new ArrayList<>();
             for (String kind : new String[] {"tv", "movie"}) {
+                List<Pick> p = new ArrayList<>(), n = new ArrayList<>();
                 JSONArray a = tmdb(key, "/discover/" + kind + "?sort_by=popularity.desc&vote_count.gte=50" + base).getJSONArray("results");
-                addAll(pop, a, kind, POPULAR, s.getValue(), 10);
+                addAll(p, a, kind, POPULAR, s.getValue(), 10);
                 String dates = kind.equals("movie") ? "&primary_release_date.gte=" + recent + "&primary_release_date.lte=" + today
                         : "&air_date.gte=" + recent + "&air_date.lte=" + today;
                 JSONArray b = tmdb(key, "/discover/" + kind + "?sort_by=popularity.desc&vote_count.gte=10" + dates + base).getJSONArray("results");
-                addAll(neu, b, kind, NEW, s.getValue(), 10);
+                addAll(n, b, kind, NEW, s.getValue(), 10);
+                (kind.equals("tv") ? popTv : popMovie).add(p);
+                (kind.equals("tv") ? newTv : newMovie).add(n);
             }
-            popular.add(pop);
-            fresh.add(neu);
         }
-        out.addAll(interleave(popular, 24));
-        out.addAll(interleave(fresh, 24));
+        out.addAll(interleave(java.util.Arrays.asList(interleave(popTv, 24), interleave(popMovie, 24)), 24));
+        out.addAll(interleave(java.util.Arrays.asList(interleave(newTv, 24), interleave(newMovie, 24)), 24));
         return out;
     }
 
     private static void addAll(List<Pick> out, JSONArray a, String kind, String group, String[] service, int max) {
-        for (int i = 0; i < a.length() && out.size() < max * 2; i++) {
+        for (int i = 0; i < a.length() && out.size() < max; i++) {
             JSONObject o = a.optJSONObject(i);
             if (o == null) continue;
             String backdrop = o.optString("backdrop_path", "");
