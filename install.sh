@@ -4,7 +4,7 @@
 #   ./install.sh <TV-IP>[:port]                 install and make Debloat TV the home screen
 #   ./install.sh <TV-IP>[:port] --config FILE   …and send settings (key=value lines: tmdb_key, trakt_client_id,
 #                                               city, latitude, longitude, region, live_tv_app, units,
-#                                               vpn_tunnel, vpn_on_apps, vpn_off_apps)
+#                                               vpn_tunnel, vpn_apps)
 #   ./install.sh <TV-IP>[:port] --undo          give Home back to the TV's own home screen
 #
 # On the TV first: Settings → System → About → press "Android TV OS build" 7 times, then Developer options →
@@ -82,8 +82,14 @@ say "Permissions…"
 tv pm grant $PKG android.permission.WRITE_SECURE_SETTINGS || true
 # Some TVs (TCL) block apps from starting in the background unless allowed.
 tv cmd appops set $PKG AUTO_START allow 2>/dev/null || true
-# VPN rules (vpn_tunnel in the config): switching WireGuard tunnels. Only when the WireGuard app is on the TV.
-if installed com.wireguard.android; then tv pm grant $PKG com.wireguard.android.permission.CONTROL_TUNNELS || true; fi
+# VPN for some apps (vpn_tunnel in the config): switching WireGuard tunnels. Only when the WireGuard app is on the TV.
+# WireGuard is also let start in the background (otherwise Android stops it starting the tunnel from behind an app).
+if installed com.wireguard.android; then
+  tv pm grant $PKG com.wireguard.android.permission.CONTROL_TUNNELS || true
+  tv cmd deviceidle whitelist +com.wireguard.android >/dev/null || true
+  tv cmd appops set com.wireguard.android RUN_ANY_IN_BACKGROUND allow 2>/dev/null || true
+  tv cmd appops set com.wireguard.android AUTO_START allow 2>/dev/null || true
+fi
 
 say "Remote buttons…"
 list=$(tv settings get secure enabled_accessibility_services)

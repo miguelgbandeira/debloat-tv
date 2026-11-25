@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
  *   adb shell am broadcast -a tv.debloat.home.SETUP -n tv.debloat.home/.SetupReceiver \
  *     --es tmdb_key KEY --es trakt_client_id ID --es city Lisbon --es latitude 38.7 --es longitude -9.1 \
  *     --es region PT --es live_tv_app se.hedekonsult.sparkle --es use_stremio 1 --es setup_done 1 --es layout '{json}' \
- *     --es vpn_tunnel singapore --es vpn_on_apps ar.tvplayer.tv --es vpn_off_apps com.stremio.one
+ *     --es vpn_tunnel singapore --es vpn_apps ar.tvplayer.tv,com.tubs.tubplayer
  * With setup_done=1 the TV skips its first-run questions (they were answered on the computer).
  * Only the shell can send it (the receiver needs WRITE_SECURE_SETTINGS, which normal apps don't have).
  */
@@ -31,7 +31,7 @@ public final class SetupReceiver extends BroadcastReceiver {
         }
         String tunnel = intent.getStringExtra(Vpn.TUNNEL);
         if (tunnel != null) {
-            Vpn.save(c, tunnel, intent.getStringExtra(Vpn.ON_APPS), intent.getStringExtra(Vpn.OFF_APPS));
+            Vpn.save(c, tunnel, intent.getStringExtra(Vpn.APPS));
             done.append("vpn ");
         }
         String layout = intent.getStringExtra("layout");
