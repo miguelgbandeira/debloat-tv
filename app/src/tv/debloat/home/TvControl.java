@@ -11,6 +11,7 @@ import java.util.List;
 /**
  * The few system changes Debloat TV makes from the TV itself, through its own adb connection (Adb):
  *  - remote buttons: TVs like TCL stop the key service at every restart; it's turned back on;
+ *  - the VPN apps: TCL also takes back WireGuard's right to start a VPN at every restart; it's given back (Vpn);
  *  - the Home button: this home screen, or the TV's own (its home app and setup app turned back on).
  * Without USB debugging on, none of this runs and the settings page says so.
  */
@@ -49,19 +50,26 @@ final class TvControl {
         return false;
     }
 
-    /** After a restart: if the remote buttons stopped, turn them back on (quietly; nothing happens without adb). */
+    /**
+     * After a restart: if the remote buttons stopped, turn them back on; and once per restart, let WireGuard start the
+     * VPN for the VPN apps again (TCL takes that back at every restart). Quietly; nothing happens without adb.
+     */
     static void repairAfterBoot(Context c) {
         if (busy) return;
         busy = true;
         new Thread(() -> {
             adbOn = Adb.available();   // also tells the settings page whether USB debugging is on
-            if (buttonsRunning(c) || !adbOn) {
+            boolean buttons = !buttonsRunning(c), vpn = Vpn.needsWireGuardRepair(c);
+            if (!adbOn || (!buttons && !vpn)) {
                 busy = false;
                 return;
             }
             try (Adb adb = Adb.connect(c, 20000)) {
-                startButtons(adb);
-                Logs.w("remote buttons turned back on");
+                if (buttons) {
+                    startButtons(adb);
+                    Logs.w("remote buttons turned back on");
+                }
+                if (vpn) Vpn.repairWireGuard(c, adb);
             } catch (Exception e) {
                 Logs.w("repair: " + e.getMessage());
             } finally {

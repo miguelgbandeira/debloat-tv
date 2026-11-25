@@ -56,7 +56,7 @@ final class Vpn {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static Runnable pendingOff;
 
-    private static void load(Context c) {
+    private static synchronized void load(Context c) {
         File f = file(c);
         long s = f.lastModified() * 31 + f.length();
         if (s == stamp) return;
@@ -96,6 +96,55 @@ final class Vpn {
                 ours(app).delete();
             };
             MAIN.postDelayed(pendingOff, OFF_DELAY_MS);
+        }
+    }
+
+    /** Is a tunnel set up, the WireGuard app here, and its rights not yet given back since this restart? */
+    static boolean needsWireGuardRepair(Context c) {
+        load(c);
+        if (tunnel.isEmpty()) return false;
+        try {
+            c.getPackageManager().getPackageInfo(WIREGUARD, 0);
+        } catch (Exception e) {
+            return false;
+        }
+        return !String.valueOf(bootCount(c)).equals(readRepaired(c));
+    }
+
+    /**
+     * TCL TVs take back, at every restart, WireGuard's consent to run a VPN and its right to start in the background:
+     * without them a tunnel request does nothing. Given back once per restart (the installer did it the first time).
+     */
+    static void repairWireGuard(Context c, Adb adb) throws java.io.IOException {
+        adb.run("cmd appops set " + WIREGUARD + " ACTIVATE_VPN allow");
+        adb.run("cmd appops set " + WIREGUARD + " AUTO_START allow");
+        adb.run("cmd appops set " + WIREGUARD + " RUN_ANY_IN_BACKGROUND allow");
+        adb.run("cmd deviceidle whitelist +" + WIREGUARD);
+        try (FileOutputStream out = new FileOutputStream(repairedFile(c))) {
+            out.write(String.valueOf(bootCount(c)).getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            Logs.w("vpn repair: " + e.getMessage());
+        }
+        Logs.w("vpn: WireGuard allowed again after the restart");
+    }
+
+    private static int bootCount(Context c) {
+        return android.provider.Settings.Global.getInt(c.getContentResolver(), android.provider.Settings.Global.BOOT_COUNT, -1);
+    }
+
+    private static File repairedFile(Context c) {
+        return new File(c.getFilesDir(), "vpn-repaired-boot");
+    }
+
+    private static String readRepaired(Context c) {
+        File f = repairedFile(c);
+        if (!f.exists()) return "";
+        try (FileInputStream in = new FileInputStream(f)) {
+            byte[] data = new byte[32];
+            int n = in.read(data);
+            return new String(data, 0, Math.max(0, n), StandardCharsets.UTF_8).trim();
+        } catch (Exception e) {
+            return "";
         }
     }
 

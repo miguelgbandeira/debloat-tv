@@ -89,6 +89,7 @@ if installed com.wireguard.android; then
   tv cmd deviceidle whitelist +com.wireguard.android >/dev/null || true
   tv cmd appops set com.wireguard.android RUN_ANY_IN_BACKGROUND allow 2>/dev/null || true
   tv cmd appops set com.wireguard.android AUTO_START allow 2>/dev/null || true
+  tv cmd appops set com.wireguard.android ACTIVATE_VPN allow 2>/dev/null || true   # TCL resets it at restarts; Debloat TV gives it back
 fi
 
 say "Remote buttons…"
