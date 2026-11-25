@@ -87,9 +87,11 @@ final class SettingsPages {
     void tmdbPage(Sheet.Builder b) {
         boolean on = !Store.tmdbKey(home.activity).isEmpty();
         b.icon(home.symbol("sparkles"), true).title("Streaming apps")
-                .subtitle("Popular and new on the streaming apps on this TV, in your country.");
+                .subtitle(Apps.installed(home.activity, Stremio.PKG)
+                        ? "New and popular series and movies, from anywhere. They open in Stremio."
+                        : "Popular and new on the streaming apps on this TV, in your country.");
         b.heading("Streaming apps");
-        b.note(on ? "On. Rows: new and popular series, new and popular movies, on your apps."
+        b.note(on ? "On. Rows: New series, Popular series, New movies, Popular movies."
                 : "Needs a free TMDB key: themoviedb.org → Settings → API. Then type it below (or send it with the installer).");
         b.input("TMDB key", Store.tmdbKey(home.activity), "Save", key -> {
             Store.put(home.activity, Store.TMDB_KEY, key);

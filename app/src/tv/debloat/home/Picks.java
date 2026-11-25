@@ -22,8 +22,9 @@ import java.util.Map;
 
 /**
  * The titles in the home screen's rows:
- *  - New / Popular series and movies on your apps (four rows): what's popular and recent on the streaming apps
- *    installed on the TV, in your country (TMDB, with your own free key). Opens the app it's on.
+ *  - New / Popular series and movies (four rows, from TMDB with your own free key): with Stremio on the TV, what's
+ *    new and popular anywhere, opened in Stremio; without it, what's on the streaming apps installed on the TV, in
+ *    your country, opened in the app it's on.
  *  - Up next / For you / Trending: from your Trakt account, when signed in. Open in Stremio when it's installed.
  */
 final class Picks {
@@ -33,6 +34,7 @@ final class Picks {
 
     static final class Pick {
         String key, group, kind, title, card, backdrop, meta = "", overview = "", note, link, pkg;
+        transient int tmdb;   // while fetching
     }
 
     /** TMDB's name for a streaming service (lowercase) → its Android TV app. */
@@ -113,7 +115,7 @@ final class Picks {
         if (fetching) return;
         String tmdb = Store.tmdbKey(context);
         boolean trakt = traktMode();
-        String now = tmdb.hashCode() + ":" + trakt + ":" + Store.region(context);
+        String now = tmdb.hashCode() + ":" + trakt + ":" + Store.region(context) + ":" + Apps.installed(context, Stremio.PKG);
         long t = System.currentTimeMillis();
         boolean tmdbStale = !tmdb.isEmpty() && (t - tmdbAt > 6 * 3600_000L || !now.equals(stamp));
         boolean traktStale = trakt && (t - traktAt > 20 * 60_000L || !now.equals(stamp));
@@ -182,6 +184,7 @@ final class Picks {
     // MARK: - TMDB: popular and new on your streaming apps
 
     private List<Pick> fetchServices(String key) throws Exception {
+        if (Apps.installed(context, Stremio.PKG)) return fetchEverything(key);
         String region = Store.region(context);
         // The services TMDB has in your country that have an app on this TV: TMDB id → {name, package}.
         Map<Integer, String[]> mine = new LinkedHashMap<>();   // TMDB provider id → {name, app}
@@ -203,11 +206,11 @@ final class Picks {
             for (String kind : new String[] {"tv", "movie"}) {
                 List<Pick> p = new ArrayList<>(), n = new ArrayList<>();
                 JSONArray a = tmdb(key, "/discover/" + kind + "?sort_by=popularity.desc&vote_count.gte=50" + base).getJSONArray("results");
-                addAll(p, a, kind, POPULAR, s.getValue(), 10);
+                addAll(p, a, kind, POPULAR, s.getValue()[0], s.getValue()[1], 10);
                 String dates = kind.equals("movie") ? "&primary_release_date.gte=" + recent + "&primary_release_date.lte=" + today
                         : "&air_date.gte=" + recent + "&air_date.lte=" + today;
                 JSONArray b = tmdb(key, "/discover/" + kind + "?sort_by=popularity.desc&vote_count.gte=10" + dates + base).getJSONArray("results");
-                addAll(n, b, kind, NEW, s.getValue(), 10);
+                addAll(n, b, kind, NEW, s.getValue()[0], s.getValue()[1], 10);
                 (kind.equals("tv") ? popTv : popMovie).add(p);
                 (kind.equals("tv") ? newTv : newMovie).add(n);
             }
@@ -219,7 +222,68 @@ final class Picks {
         return out;
     }
 
-    private static void addAll(List<Pick> out, JSONArray a, String kind, String group, String[] service, int max) {
+    /** Not talk shows, news, reality or soaps: on top of TMDB's popular series every day, and not what you'd look for. */
+    private static final String SERIES_ONLY = "&without_genres=10763,10764,10766,10767";
+
+    /** The same for a list that can't be filtered when asked for (trending). */
+    private static boolean notSeries(JSONObject o) {
+        JSONArray g = o.optJSONArray("genre_ids");
+        for (int i = 0; g != null && i < g.length(); i++) {
+            int id = g.optInt(i);
+            if (id == 10763 || id == 10764 || id == 10766 || id == 10767) return true;
+        }
+        return false;
+    }
+
+    /** What's new and popular anywhere, each opened in Stremio. */
+    private List<Pick> fetchEverything(String key) throws Exception {
+        String recent = day(-75), today = day(0);
+        // Popular: trending this week (TMDB's plain popularity keeps old titles on top). New: out in the last weeks.
+        String[][] rows = {
+                {"tv", POPULAR, "/trending/tv/week?"},
+                {"movie", POPULAR, "/trending/movie/week?"},
+                {"tv", NEW, "/discover/tv?sort_by=popularity.desc&vote_count.gte=20&air_date.gte=" + recent + "&air_date.lte=" + today + SERIES_ONLY},
+                // Out to watch at home (digital or disc), not only in cinemas.
+                {"movie", NEW, "/discover/movie?sort_by=popularity.desc&vote_count.gte=20&with_release_type=4|5&release_date.gte="
+                        + day(-90) + "&release_date.lte=" + today},
+        };
+        List<Pick> out = new ArrayList<>();
+        for (String[] r : rows) {
+            JSONArray results = tmdb(key, r[2] + "&include_adult=false").getJSONArray("results"), keep = new JSONArray();
+            for (int i = 0; i < results.length(); i++) {
+                JSONObject o = results.optJSONObject(i);
+                if (o != null && !notSeries(o)) keep.put(o);
+            }
+            List<Pick> row = new ArrayList<>();
+            addAll(row, keep, r[0], r[1], null, Stremio.PKG, 20);
+            for (Pick p : row) {
+                String imdb = imdb(key, p.kind, p.tmdb);
+                if (imdb.isEmpty()) continue;   // Stremio finds titles by their IMDb id
+                p.link = "stremio:///detail/" + (p.kind.equals("movie") ? "movie/" : "series/") + imdb;
+                out.add(p);
+            }
+        }
+        return out;
+    }
+
+    /** TMDB id → IMDb id, kept: titles stay in the rows for days. */
+    private final Map<String, String> imdbIds = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private String imdb(String key, String kind, int id) {
+        String k = kind + id, known = imdbIds.get(k);
+        if (known != null) return known;
+        try {
+            String imdb = tmdb(key, "/" + kind + "/" + id + "/external_ids").optString("imdb_id", "");
+            if (!imdb.startsWith("tt")) imdb = "";
+            imdbIds.put(k, imdb);
+            return imdb;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** One page of TMDB results as picks; `service` is the app's name on the cards (none for Stremio). */
+    private static void addAll(List<Pick> out, JSONArray a, String kind, String group, String service, String app, int max) {
         for (int i = 0; i < a.length() && out.size() < max; i++) {
             JSONObject o = a.optJSONObject(i);
             if (o == null) continue;
@@ -234,9 +298,10 @@ final class Picks {
             p.backdrop = "https://image.tmdb.org/t/p/w1280" + backdrop;
             p.overview = o.optString("overview", "");
             String date = o.optString(kind.equals("movie") ? "release_date" : "first_air_date", "");
+            p.tmdb = o.optInt("id");
             p.meta = (kind.equals("movie") ? "Movie" : "Series") + (date.length() >= 4 ? " · " + date.substring(0, 4) : "")
-                    + " · " + service[0];
-            p.pkg = service[1];
+                    + (service != null ? " · " + service : "");
+            p.pkg = app;
             out.add(p);
         }
     }

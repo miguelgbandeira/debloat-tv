@@ -337,7 +337,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
             case HomeLayout.POPULAR_SERIES:
             case HomeLayout.NEW_MOVIES:
             case HomeLayout.POPULAR_MOVIES: {
-                if (!firstRun.useStreaming()) return out;
+                if (!firstRun.useStreaming() && !firstRun.useStremio()) return out;
                 String group = type.startsWith("new") ? Picks.NEW : Picks.POPULAR, kind = type.endsWith("tv") ? "tv" : "movie";
                 for (Picks.Pick p : recs.group(group)) if (kind.equals(p.kind)) out.add(fromPick(p));
                 return out;

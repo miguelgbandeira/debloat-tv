@@ -35,10 +35,10 @@ final class HomeLayout {
             switch (type) {
                 case CONTINUE: return "Continue watching";
                 case LIBRARY: return "Library";
-                case NEW_SERIES: return "New series on your apps";
-                case POPULAR_SERIES: return "Popular series on your apps";
-                case NEW_MOVIES: return "New movies on your apps";
-                case POPULAR_MOVIES: return "Popular movies on your apps";
+                case NEW_SERIES: return "New series";
+                case POPULAR_SERIES: return "Popular series";
+                case NEW_MOVIES: return "New movies";
+                case POPULAR_MOVIES: return "Popular movies";
                 case UP_NEXT: return "Up next on Trakt";
                 case FOR_YOU: return "For you";
                 case TRENDING: return "Trending";
