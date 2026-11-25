@@ -150,11 +150,56 @@ final class Vpn {
 
     private static void send(Context c, boolean on, String pkg) {
         String action = on ? "com.wireguard.android.action.SET_TUNNEL_UP" : "com.wireguard.android.action.SET_TUNNEL_DOWN";
+        boolean was = active(c);
         try {
             c.sendBroadcast(new Intent(action).setPackage(WIREGUARD).putExtra("tunnel", tunnel));
             Logs.w("vpn " + tunnel + (on ? " on" : " off") + " (" + pkg + " in front)");
         } catch (RuntimeException e) {
             Logs.w("vpn: " + e.getMessage());
         }
+        if (on != was) announce(c.getApplicationContext(), on, ++generation);
+    }
+
+    // MARK: - "VPN on: Singapore" / "VPN off", once the change has really happened
+
+    private static final long CHECK_EVERY_MS = 500, GIVE_UP_MS = 12000;
+    private static int generation;   // a newer request stops the checks of an older one
+
+    /** Is any VPN carrying the TV's traffic? */
+    private static boolean active(Context c) {
+        android.net.ConnectivityManager cm = (android.net.ConnectivityManager) c.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm == null) return false;
+        for (android.net.Network n : cm.getAllNetworks()) {
+            android.net.NetworkCapabilities caps = cm.getNetworkCapabilities(n);
+            if (caps != null && caps.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)) return true;
+        }
+        return false;
+    }
+
+    private static void announce(Context c, boolean on, int gen) {
+        final long start = android.os.SystemClock.uptimeMillis();
+        Runnable check = new Runnable() {
+            @Override public void run() {
+                if (gen != generation) return;
+                if (active(c) == on) {
+                    toast(c, on ? "VPN on: " + place() : "VPN off");
+                } else if (android.os.SystemClock.uptimeMillis() - start > GIVE_UP_MS) {
+                    toast(c, on ? "VPN didn't connect (" + place() + ")" : "VPN still on");
+                } else {
+                    MAIN.postDelayed(this, CHECK_EVERY_MS);
+                }
+            }
+        };
+        MAIN.postDelayed(check, CHECK_EVERY_MS);
+    }
+
+    /** The tunnel's name as a place: "singapore" → "Singapore". */
+    private static String place() {
+        return tunnel.isEmpty() ? tunnel : Character.toUpperCase(tunnel.charAt(0)) + tunnel.substring(1);
+    }
+
+    private static void toast(Context c, String text) {
+        Logs.w(text);
+        android.widget.Toast.makeText(c, text, android.widget.Toast.LENGTH_SHORT).show();
     }
 }
