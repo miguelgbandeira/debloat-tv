@@ -46,7 +46,11 @@ final class TvControl {
         AccessibilityManager am = (AccessibilityManager) c.getSystemService(Context.ACCESSIBILITY_SERVICE);
         if (am == null) return false;
         List<AccessibilityServiceInfo> on = am.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK);
-        for (AccessibilityServiceInfo i : on) if (SERVICE.equals(i.getId())) return true;
+        // Android names it in the short form ("tv.debloat.home/.KeyService"): compare as components.
+        android.content.ComponentName mine = android.content.ComponentName.unflattenFromString(SERVICE);
+        for (AccessibilityServiceInfo i : on) {
+            if (mine.equals(android.content.ComponentName.unflattenFromString(i.getId()))) return true;
+        }
         return false;
     }
 

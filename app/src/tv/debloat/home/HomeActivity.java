@@ -11,6 +11,9 @@ public final class HomeActivity extends Activity {
     static final String OPEN = "open";
 
     private HomeView home;
+    // Coming back from an app (onRestart, then the Home intent): stay where you were. Home pressed on the home screen
+    // itself (only a brief onPause before the intent): back to the top.
+    private boolean returning;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -22,8 +25,14 @@ public final class HomeActivity extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        returning = false;
         home.resume();
         TvControl.repairAfterBoot(this);   // remote buttons back on after a restart (needs USB debugging)
+    }
+
+    @Override protected void onRestart() {
+        super.onRestart();
+        returning = true;
     }
 
     @Override protected void onPause() {
@@ -35,7 +44,7 @@ public final class HomeActivity extends Activity {
         super.onNewIntent(intent);
         String open = intent.getStringExtra(OPEN);
         if (open != null) home.openPlace(open);
-        else home.reset(true);   // Home pressed on the home screen: back to the top
+        else if (!returning) home.reset(true);   // Home pressed on the home screen: back to the top (from an app: where you were)
     }
 
     @Override protected void onDestroy() {
