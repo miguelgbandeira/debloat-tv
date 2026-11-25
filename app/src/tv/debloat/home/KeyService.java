@@ -14,6 +14,18 @@ import java.util.Map;
  * so it lives in a small process of its own and does almost nothing. It also notices which app is in front (for Vpn).
  */
 public final class KeyService extends AccessibilityService {
+    /** The running service, for the notices it draws over other apps (Notice); null when it's stopped. */
+    static volatile KeyService running;
+
+    @Override protected void onServiceConnected() {
+        running = this;
+    }
+
+    @Override public void onDestroy() {
+        if (running == this) running = null;
+        super.onDestroy();
+    }
+
     @Override protected boolean onKeyEvent(KeyEvent event) {
         return Buttons.onKey(this, event);
     }

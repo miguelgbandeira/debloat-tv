@@ -182,9 +182,9 @@ final class Vpn {
             @Override public void run() {
                 if (gen != generation) return;
                 if (active(c) == on) {
-                    toast(c, on ? "VPN on: " + place() : "VPN off");
+                    notice(c, on ? "VPN on: " + place() : "VPN off", on);
                 } else if (android.os.SystemClock.uptimeMillis() - start > GIVE_UP_MS) {
-                    toast(c, on ? "VPN didn't connect (" + place() + ")" : "VPN still on");
+                    notice(c, on ? "VPN didn't connect (" + place() + ")" : "VPN still on", !on);
                 } else {
                     MAIN.postDelayed(this, CHECK_EVERY_MS);
                 }
@@ -198,8 +198,9 @@ final class Vpn {
         return tunnel.isEmpty() ? tunnel : Character.toUpperCase(tunnel.charAt(0)) + tunnel.substring(1);
     }
 
-    private static void toast(Context c, String text) {
+    /** Top right over the open app (Notice); a plain toast if the key service isn't there to draw it. */
+    private static void notice(Context c, String text, boolean vpnOn) {
         Logs.w(text);
-        android.widget.Toast.makeText(c, text, android.widget.Toast.LENGTH_SHORT).show();
+        if (!Notice.show(text, vpnOn)) android.widget.Toast.makeText(c, text, android.widget.Toast.LENGTH_SHORT).show();
     }
 }
