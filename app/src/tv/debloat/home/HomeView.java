@@ -386,10 +386,37 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
     }
 
     int builtVersion = -1;   // the layout version the rows on screen were made from
+    private int appsVersion, builtAppsVersion = -1;   // goes up when an app is installed, removed or turned off
 
-    /** The rows on screen are out of date: the layout changed (rows, apps, hidden) or the titles did. */
+    /** The rows on screen are out of date: the layout changed (rows, apps, hidden), an app came or went, or the titles did. */
     boolean needsBuild() {
-        return layout.version != builtVersion || !currentSignature().equals(signature);
+        return layout.version != builtVersion || appsVersion != builtAppsVersion || !currentSignature().equals(signature);
+    }
+
+    /** An app uninstalled (from its menu here, or from the TV's settings) leaves its row at once; a new one shows. */
+    private final android.content.BroadcastReceiver appsChanged = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) {
+            appsVersion++;
+            rebuildIfChanged();
+        }
+    };
+
+    @Override protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        android.content.IntentFilter f = new android.content.IntentFilter();
+        f.addAction(android.content.Intent.ACTION_PACKAGE_ADDED);
+        f.addAction(android.content.Intent.ACTION_PACKAGE_REMOVED);
+        f.addAction(android.content.Intent.ACTION_PACKAGE_CHANGED);
+        f.addDataScheme("package");
+        activity.registerReceiver(appsChanged, f);
+    }
+
+    @Override protected void onDetachedFromWindow() {
+        try {
+            activity.unregisterReceiver(appsChanged);
+        } catch (RuntimeException ignored) {
+        }
+        super.onDetachedFromWindow();
     }
 
     /** autoFocus false: the caller puts the selection back itself (after a menu or All Apps closes). */
@@ -405,6 +432,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
         rowIndex.clear();
         signature = currentSignature();
         builtVersion = layout.version;
+        builtAppsVersion = appsVersion;
 
         List<String[]> installed = Apps.all(activity);
         List<HomeLayout.Row> list = layout.rows();
