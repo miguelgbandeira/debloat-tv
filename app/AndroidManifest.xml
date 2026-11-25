@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <!-- "Uninstall" in an app's menu (Android asks you to confirm). -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+    <!-- VPN rules: turning a tunnel in the WireGuard app on and off. Granted by the installer (pm grant). -->
+    <uses-permission android:name="com.wireguard.android.permission.CONTROL_TUNNELS" />
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
@@ -53,7 +55,7 @@
         <activity android:name=".StremioLoginActivity" android:exported="false" android:excludeFromRecents="true"
             android:screenOrientation="landscape" />
 
-        <!-- Remote buttons: sees the remote's keys before apps do (only keys; no screen content). -->
+        <!-- Remote buttons: sees the remote's keys before apps do, and which app is in front (no screen content). -->
         <service
             android:name=".KeyService"
             android:process=":keys"

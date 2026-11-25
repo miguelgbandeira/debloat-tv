@@ -205,6 +205,7 @@ final class Apps {
                 break;
         }
         if (intent == null) return false;
+        if (it.pkg != null) Vpn.forApp(a, it.pkg);   // a head start on the tunnel, before the app's first request
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try {
             if (from != null && from.getWidth() > 0) {
