@@ -22,8 +22,8 @@ import java.util.Map;
 
 /**
  * The titles in the home screen's rows:
- *  - Popular / New on your apps: what's popular and recent on the streaming apps installed on the TV, in your
- *    country (TMDB, with your own free key). Opens the app it's on.
+ *  - New / Popular series and movies on your apps (four rows): what's popular and recent on the streaming apps
+ *    installed on the TV, in your country (TMDB, with your own free key). Opens the app it's on.
  *  - Up next / For you / Trending: from your Trakt account, when signed in. Open in Stremio when it's installed.
  */
 final class Picks {
@@ -195,7 +195,7 @@ final class Picks {
         List<Pick> out = new ArrayList<>();
         if (mine.isEmpty()) return out;
         String recent = day(-75), today = day(0);
-        // Per kind, one title from each app in turn; then series and movies alternate along the row.
+        // Series and movies apart (each has its own rows), one title from each app in turn.
         List<List<Pick>> popTv = new ArrayList<>(), popMovie = new ArrayList<>(), newTv = new ArrayList<>(), newMovie = new ArrayList<>();
         for (Map.Entry<Integer, String[]> s : mine.entrySet()) {
             String base = "&watch_region=" + region + "&with_watch_providers=" + s.getKey()
@@ -212,8 +212,10 @@ final class Picks {
                 (kind.equals("tv") ? newTv : newMovie).add(n);
             }
         }
-        out.addAll(interleave(java.util.Arrays.asList(interleave(popTv, 24), interleave(popMovie, 24)), 24));
-        out.addAll(interleave(java.util.Arrays.asList(interleave(newTv, 24), interleave(newMovie, 24)), 24));
+        out.addAll(interleave(popTv, 24));
+        out.addAll(interleave(popMovie, 24));
+        out.addAll(interleave(newTv, 24));
+        out.addAll(interleave(newMovie, 24));
         return out;
     }
 

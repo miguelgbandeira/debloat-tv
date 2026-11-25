@@ -18,7 +18,10 @@ import java.util.Set;
  */
 final class HomeLayout {
     static final String CONTINUE = "continue", LIBRARY = "library", UP_NEXT = "upnext", FOR_YOU = "foryou",
-            TRENDING = "trending", APPS = "apps", INPUTS = "inputs", POPULAR = "popular", NEW = "new";
+            TRENDING = "trending", APPS = "apps", INPUTS = "inputs",
+            NEW_SERIES = "new_tv", POPULAR_SERIES = "popular_tv", NEW_MOVIES = "new_movie", POPULAR_MOVIES = "popular_movie";
+    /** Before series and movies had rows of their own: one row each for popular and new (split on load). */
+    private static final String OLD_POPULAR = "popular", OLD_NEW = "new";
 
     static final class Row {
         String type, name = "";
@@ -32,8 +35,10 @@ final class HomeLayout {
             switch (type) {
                 case CONTINUE: return "Continue watching";
                 case LIBRARY: return "Library";
-                case POPULAR: return "Popular on your apps";
-                case NEW: return "New on your apps";
+                case NEW_SERIES: return "New series on your apps";
+                case POPULAR_SERIES: return "Popular series on your apps";
+                case NEW_MOVIES: return "New movies on your apps";
+                case POPULAR_MOVIES: return "Popular movies on your apps";
                 case UP_NEXT: return "Up next on Trakt";
                 case FOR_YOU: return "For you";
                 case TRENDING: return "Trending";
@@ -96,6 +101,25 @@ final class HomeLayout {
             rows.clear();
         }
         if (rows.isEmpty()) defaults();
+        else if (splitOldRows()) save();
+    }
+
+    /** An old "Popular/New on your apps" row becomes its series and movies rows, in its place, hidden or not alike. */
+    private boolean splitOldRows() {
+        boolean changed = false;
+        for (int i = 0; i < rows.size(); i++) {
+            Row r = rows.get(i);
+            String series = OLD_NEW.equals(r.type) ? NEW_SERIES : OLD_POPULAR.equals(r.type) ? POPULAR_SERIES : null;
+            if (series == null) continue;
+            String movies = series.equals(NEW_SERIES) ? NEW_MOVIES : POPULAR_MOVIES;
+            r.type = series;
+            Row m = new Row();
+            m.type = movies;
+            m.hidden = r.hidden;
+            rows.add(++i, m);
+            changed = true;
+        }
+        return changed;
     }
 
     /** The All Apps tile's entry in an app row (moved and removed like an app). */
@@ -123,8 +147,10 @@ final class HomeLayout {
         if (importLayout()) return;
         add(CONTINUE, "", false);
         add(APPS, "Favorites", false);   // empty to start: hold OK on any app to add it
-        add(POPULAR, "", false);
-        add(NEW, "", false);
+        add(NEW_SERIES, "", false);
+        add(POPULAR_SERIES, "", false);
+        add(NEW_MOVIES, "", false);
+        add(POPULAR_MOVIES, "", false);
         add(FOR_YOU, "", false);
         add(TRENDING, "", false);
         java.util.List<String[]> all = Apps.all(context);
@@ -163,6 +189,7 @@ final class HomeLayout {
             }
             JSONArray hidden = o.optJSONArray("hiddenApps");
             for (int i = 0; hidden != null && i < hidden.length(); i++) hiddenApps.add(hidden.getString(i));
+            splitOldRows();
             save();
             return !rows.isEmpty();
         } catch (Exception e) {

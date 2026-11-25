@@ -5,7 +5,7 @@
 use_stremio=1
 use_streaming=1
 
-# Streaming apps rows (Popular / New on your apps): a free key from https://www.themoviedb.org/settings/api
+# Streaming apps rows (new and popular series and movies on your apps): a free key from https://www.themoviedb.org/settings/api
 tmdb_key=
 
 # Your country, two letters (which titles are on which app). Empty = the TV's country.

@@ -81,7 +81,7 @@ TV. With Claude Code: *"Just debloat my TV at 192.168.1.50, keep the Google TV h
   *Allow USB debugging?* once. With it off, everything else keeps working.
 - **Stremio and Trakt** sign in on the TV with a code you approve on your phone. Trakt also needs your own free Trakt
   app ([trakt.tv/oauth/applications](https://trakt.tv/oauth/applications), redirect URI `http://localhost`).
-- **Popular / New on your apps** need a free [TMDB](https://www.themoviedb.org/settings/api) key.
+- **New / Popular series and movies on your apps** need a free [TMDB](https://www.themoviedb.org/settings/api) key.
 - **Early version.** Tested on a TCL Google TV (Android 14). It should work on other Android TV / Google TV sets; tell us how it goes.
 
 ## Changing it
