@@ -4,7 +4,7 @@
 #   ./install.sh <TV-IP>[:port]                 install and make Debloat TV the home screen
 #   ./install.sh <TV-IP>[:port] --config FILE   …and send settings (key=value lines: tmdb_key, trakt_client_id,
 #                                               city, latitude, longitude, region, live_tv_app, units,
-#                                               vpn_tunnel, vpn_apps)
+#                                               vpn_tunnel, vpn_apps, player)
 #   ./install.sh <TV-IP>[:port] --undo          give Home back to the TV's own home screen
 #
 # On the TV first: Settings → System → About → press "Android TV OS build" 7 times, then Developer options →

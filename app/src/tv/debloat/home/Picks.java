@@ -22,8 +22,8 @@ import java.util.Map;
 
 /**
  * The titles in the home screen's rows:
- *  - New / Popular series and movies (four rows, from TMDB with your own free key): with Stremio on the TV, what's
- *    new and popular anywhere, opened in Stremio; without it, what's on the streaming apps installed on the TV, in
+ *  - New / Popular series and movies (four rows, from TMDB with your own free key): with Stremio or Nuvio on the TV,
+ *    what's new and popular anywhere, opened in it (Player); without it, what's on the streaming apps installed on the TV, in
  *    your country, opened in the app it's on.
  *  - Up next / For you / Trending: from your Trakt account, when signed in. Open in Stremio when it's installed.
  */
@@ -115,7 +115,7 @@ final class Picks {
         if (fetching) return;
         String tmdb = Store.tmdbKey(context);
         boolean trakt = traktMode();
-        String now = tmdb.hashCode() + ":" + trakt + ":" + Store.region(context) + ":" + Apps.installed(context, Stremio.PKG);
+        String now = tmdb.hashCode() + ":" + trakt + ":" + Store.region(context) + ":" + Player.any(context);
         long t = System.currentTimeMillis();
         boolean tmdbStale = !tmdb.isEmpty() && (t - tmdbAt > 6 * 3600_000L || !now.equals(stamp));
         boolean traktStale = trakt && (t - traktAt > 20 * 60_000L || !now.equals(stamp));
@@ -155,7 +155,7 @@ final class Picks {
 
     private List<Pick> fetchTrakt() throws IOException {
         List<Pick> out = new ArrayList<>();
-        boolean stremio = Apps.installed(context, Stremio.PKG);
+        boolean stremio = Player.any(context);   // Stremio or Nuvio: links are Stremio's, turned into Nuvio's when opened
         for (Trakt.Entry e : Trakt.lists(context)) {
             if (e.fanart == null || e.fanart.isEmpty()) continue;
             Pick p = new Pick();
@@ -184,7 +184,7 @@ final class Picks {
     // MARK: - TMDB: popular and new on your streaming apps
 
     private List<Pick> fetchServices(String key) throws Exception {
-        if (Apps.installed(context, Stremio.PKG)) return fetchEverything(key);
+        if (Player.any(context)) return fetchEverything(key);
         String region = Store.region(context);
         // The services TMDB has in your country that have an app on this TV: TMDB id → {name, package}.
         Map<Integer, String[]> mine = new LinkedHashMap<>();   // TMDB provider id → {name, app}
@@ -235,7 +235,7 @@ final class Picks {
         return false;
     }
 
-    /** What's new and popular anywhere, each opened in Stremio. */
+    /** What's new and popular anywhere, each opened in Stremio or Nuvio (Player). */
     private List<Pick> fetchEverything(String key) throws Exception {
         String recent = day(-75), today = day(0);
         // Popular: trending this week (TMDB's plain popularity keeps old titles on top). New: out in the last weeks.

@@ -46,6 +46,9 @@ final class SettingsPages {
             b.item("Stremio", stremio ? "Signed in" : "Sign in", true, () -> home.sheet.push(this::stremioPage));
         }
         b.item("Trakt", trakt ? "Signed in" : Trakt.configured() ? "Sign in" : "Off", true, () -> home.sheet.push(this::traktPage));
+        if (Player.choices(home.activity).size() > 1) {
+            b.item("Open titles in", Player.name(home.activity), true, () -> home.sheet.push(this::playerPage));
+        }
         b.header("TV");
         String city = Store.get(home.activity, Store.CITY, "");
         b.item("Weather", city.isEmpty() ? "Off" : city, true, () -> home.sheet.push(this::cityPage));
@@ -87,8 +90,8 @@ final class SettingsPages {
     void tmdbPage(Sheet.Builder b) {
         boolean on = !Store.tmdbKey(home.activity).isEmpty();
         b.icon(home.symbol("sparkles"), true).title("Streaming apps")
-                .subtitle(Apps.installed(home.activity, Stremio.PKG)
-                        ? "New and popular series and movies, from anywhere. They open in Stremio."
+                .subtitle(Player.any(home.activity)
+                        ? "New and popular series and movies, from anywhere. They open in " + Player.name(home.activity) + "."
                         : "Popular and new on the streaming apps on this TV, in your country.");
         b.heading("Streaming apps");
         b.note(on ? "On. Rows: New series, Popular series, New movies, Popular movies."
@@ -158,6 +161,19 @@ final class SettingsPages {
         if (pkg.isEmpty()) return "None";
         String l = HomeView.label(Apps.all(home.activity), pkg);
         return l == null ? "Not installed" : l;
+    }
+    /** Stremio or Nuvio: where a title opens (when both are on the TV). */
+    void playerPage(Sheet.Builder b) {
+        String current = Player.chosen(home.activity);
+        b.icon(home.symbol("play"), true).title("Open titles in")
+                .subtitle("The app a movie or series opens in, from any row. Continue watching and Library still come from your Stremio account.");
+        b.heading("Open titles in");
+        for (String[] app : Player.choices(home.activity)) {
+            b.row("player:" + app[0], app[1], app[0].equals(current) ? "\u2713" : null, false, () -> {
+                Store.put(home.activity, Player.KEY, app[0]);
+                home.sheet.back();
+            }, null, null);
+        }
     }
     void liveTvPage(Sheet.Builder b) {
         List<String[]> apps = new ArrayList<>();

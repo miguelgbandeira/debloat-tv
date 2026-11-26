@@ -5,6 +5,9 @@
 use_stremio=1
 use_streaming=1
 
+# The app movies and series open in when the TV has both: stremio or nuvio (Nuvio / Nuvio+ IPTV). Empty = Stremio.
+player=
+
 # Streaming apps rows (new and popular series and movies on your apps): a free key from https://www.themoviedb.org/settings/api
 tmdb_key=
 

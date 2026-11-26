@@ -19,7 +19,7 @@ import java.nio.charset.StandardCharsets;
  */
 public final class SetupReceiver extends BroadcastReceiver {
     private static final String[] KEYS = {Store.TMDB_KEY, Store.TRAKT_ID, Store.CITY, Store.LATITUDE, Store.LONGITUDE,
-            Store.REGION, Store.LIVE_TV, Store.UNITS, "use_stremio", "use_streaming", "use_trakt", "setup_done"};
+            Store.REGION, Store.LIVE_TV, Store.UNITS, "use_stremio", "use_streaming", "use_trakt", Player.KEY, "setup_done"};
 
     @Override public void onReceive(Context c, Intent intent) {
         StringBuilder done = new StringBuilder();

@@ -337,7 +337,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
             case HomeLayout.POPULAR_SERIES:
             case HomeLayout.NEW_MOVIES:
             case HomeLayout.POPULAR_MOVIES: {
-                if (!firstRun.useStreaming() && !firstRun.useStremio()) return out;
+                if (!firstRun.useStreaming() && !firstRun.useStremio() && !Player.any(activity)) return out;
                 String group = type.startsWith("new") ? Picks.NEW : Picks.POPULAR, kind = type.endsWith("tv") ? "tv" : "movie";
                 for (Picks.Pick p : recs.group(group)) if (kind.equals(p.kind)) out.add(fromPick(p));
                 return out;
@@ -641,7 +641,7 @@ final class HomeView extends FrameLayout implements Picks.Listener, Weather.List
             card.addView(done, dp);
         }
         card.setTag(TAG_TITLE, t);
-        card.setOnClickListener(v -> open(Apps.item(t.pkg, t.title, t.link), v));
+        card.setOnClickListener(v -> open(Player.item(activity, t.pkg, t.title, t.link), v));
         return card;
     }
 
